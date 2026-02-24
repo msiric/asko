@@ -244,6 +244,12 @@ render_templates() {
         info "  config/caddy/Caddyfile"
     fi
 
+    if [[ -f "${SCRIPT_DIR}/config/ironclaw/config.toml.template" ]]; then
+        envsubst < "${SCRIPT_DIR}/config/ironclaw/config.toml.template" \
+            > "${SCRIPT_DIR}/config/ironclaw/config.toml"
+        info "  config/ironclaw/config.toml"
+    fi
+
     info "Templates rendered"
 }
 

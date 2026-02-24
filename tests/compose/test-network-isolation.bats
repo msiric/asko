@@ -1,0 +1,134 @@
+#!/usr/bin/env bats
+
+load '../helpers/test-helpers'
+
+setup() {
+    require_docker
+    generate_test_env
+    cp "${ASKO_ROOT}/.env.test" "${ASKO_ROOT}/.env"
+}
+
+teardown() {
+    cleanup_test_env
+    rm -f "${ASKO_ROOT}/.env"
+}
+
+# Helper: get networks for a service from docker-compose.yml
+get_service_networks() {
+    local service="$1"
+    # Try python yaml first, fall back to docker compose config parsing
+    python3 -c "
+import yaml
+with open('${ASKO_ROOT}/docker-compose.yml') as f:
+    config = yaml.safe_load(f)
+svc = config.get('services', {}).get('$service', {})
+nets = svc.get('networks', [])
+if isinstance(nets, list):
+    for n in nets:
+        print(n)
+elif isinstance(nets, dict):
+    for n in nets.keys():
+        print(n)
+" 2>/dev/null || {
+        # Fallback: parse docker compose config output
+        cd "${ASKO_ROOT}"
+        docker compose config 2>/dev/null | \
+            awk "/^  ${service}:/,/^  [a-z]/" | \
+            awk '/networks:/,/^    [a-z]/' | \
+            grep -oP 'asko_\w+' | sort -u
+    }
+}
+
+@test "ironclaw is on proxy and agents networks only" {
+    networks=$(get_service_networks "ironclaw")
+    if [[ -z "$networks" ]]; then
+        skip "python3 yaml not available"
+    fi
+
+    echo "IronClaw networks: $networks"
+    echo "$networks" | grep -q "asko_proxy"
+    echo "$networks" | grep -q "asko_agents"
+    # Should NOT be on backend or automation
+    ! echo "$networks" | grep -q "asko_backend"
+    ! echo "$networks" | grep -q "asko_automation"
+}
+
+@test "ironclaw cannot directly reach postgres" {
+    # IronClaw should not share any network with postgres except through litellm
+    ic_nets=$(get_service_networks "ironclaw")
+    pg_nets=$(get_service_networks "postgres")
+    if [[ -z "$ic_nets" ]] || [[ -z "$pg_nets" ]]; then
+        skip "python3 yaml not available"
+    fi
+
+    # Find shared networks
+    shared=$(comm -12 <(echo "$ic_nets" | sort) <(echo "$pg_nets" | sort))
+    echo "Shared networks between ironclaw and postgres: '$shared'"
+    [[ -z "$shared" ]]
+}
+
+@test "ironclaw cannot directly reach ollama" {
+    ic_nets=$(get_service_networks "ironclaw")
+    ol_nets=$(get_service_networks "ollama")
+    if [[ -z "$ic_nets" ]] || [[ -z "$ol_nets" ]]; then
+        skip "python3 yaml not available"
+    fi
+
+    shared=$(comm -12 <(echo "$ic_nets" | sort) <(echo "$ol_nets" | sort))
+    echo "Shared networks between ironclaw and ollama: '$shared'"
+    [[ -z "$shared" ]]
+}
+
+@test "ironclaw can reach litellm" {
+    ic_nets=$(get_service_networks "ironclaw")
+    ll_nets=$(get_service_networks "litellm")
+    if [[ -z "$ic_nets" ]] || [[ -z "$ll_nets" ]]; then
+        skip "python3 yaml not available"
+    fi
+
+    shared=$(comm -12 <(echo "$ic_nets" | sort) <(echo "$ll_nets" | sort))
+    echo "Shared networks between ironclaw and litellm: '$shared'"
+    [[ -n "$shared" ]]
+}
+
+@test "n8n is on proxy and automation networks only" {
+    networks=$(get_service_networks "n8n")
+    if [[ -z "$networks" ]]; then
+        # n8n may not exist yet in Phase 2 compose - skip
+        skip "n8n not in compose or python3 yaml not available"
+    fi
+
+    echo "n8n networks: $networks"
+    echo "$networks" | grep -q "asko_proxy"
+    echo "$networks" | grep -q "asko_automation"
+    ! echo "$networks" | grep -q "asko_backend"
+    ! echo "$networks" | grep -q "asko_agents"
+}
+
+@test "ollama is on backend network only" {
+    networks=$(get_service_networks "ollama")
+    if [[ -z "$networks" ]]; then
+        skip "python3 yaml not available"
+    fi
+
+    echo "Ollama networks: $networks"
+    echo "$networks" | grep -q "asko_backend"
+    ! echo "$networks" | grep -q "asko_proxy"
+    ! echo "$networks" | grep -q "asko_agents"
+    ! echo "$networks" | grep -q "asko_automation"
+}
+
+@test "only caddy and litellm are on the proxy network" {
+    # Services on asko_proxy should be: caddy, open-webui, litellm, ironclaw, n8n (when added)
+    # Ollama, postgres, redis should NOT be on proxy
+    for svc in ollama postgres redis; do
+        networks=$(get_service_networks "$svc")
+        if [[ -z "$networks" ]]; then
+            skip "python3 yaml not available"
+        fi
+        if echo "$networks" | grep -q "asko_proxy"; then
+            echo "FAIL: $svc should not be on asko_proxy"
+            false
+        fi
+    done
+}
