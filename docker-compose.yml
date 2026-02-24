@@ -1,0 +1,242 @@
+# asko — Security-first self-hosted AI assistant stack
+# https://github.com/mariosiric/asko
+
+services:
+  # === DATA LAYER ===
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: asko-postgres
+    networks:
+      - asko_backend
+      - asko_automation
+    volumes:
+      - asko_postgres_data:/var/lib/postgresql/data
+      - ./config/postgres/init-databases.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - FOWNER
+      - DAC_READ_SEARCH
+    shm_size: '256m'
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: asko-redis
+    networks:
+      - asko_backend
+      - asko_automation
+    volumes:
+      - asko_redis_data:/data
+    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 200mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=32M
+    restart: unless-stopped
+
+  # === INFERENCE LAYER ===
+
+  ollama:
+    image: ollama/ollama:0.6
+    container_name: asko-ollama
+    networks:
+      - asko_backend
+    volumes:
+      - asko_ollama_models:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+        reservations:
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags > /dev/null"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    container_name: asko-litellm
+    networks:
+      - asko_proxy
+      - asko_backend
+      - asko_agents
+      - asko_automation
+    volumes:
+      - ./config/litellm/config.yaml:/app/config.yaml:ro
+      - asko_litellm_data:/app/data
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4000/health > /dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  # === UI LAYER ===
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: asko-openwebui
+    networks:
+      - asko_proxy
+      - asko_backend
+    volumes:
+      - asko_openwebui_data:/app/backend/data
+    environment:
+      OPENAI_API_BASE_URL: http://litellm:4000/v1
+      OPENAI_API_KEY: ${LITELLM_MASTER_KEY}
+      OLLAMA_BASE_URL: http://ollama:11434
+      DATABASE_URL: ${OPENWEBUI_DATABASE_URL}
+      WEBUI_AUTH: "true"
+      ENABLE_SIGNUP: "false"
+      WEBUI_SECRET_KEY: ${OPENWEBUI_SECRET_KEY}
+    depends_on:
+      litellm:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/ > /dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  # === PROXY LAYER ===
+
+  caddy:
+    image: caddy:2.9-alpine
+    container_name: asko-caddy
+    networks:
+      - asko_proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./config/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - asko_caddy_data:/data
+      - asko_caddy_config:/config
+    depends_on:
+      open-webui:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 0"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    read_only: true
+    tmpfs:
+      - /tmp:size=64M
+    restart: unless-stopped
+
+# === NETWORKS ===
+
+networks:
+  asko_proxy:
+    driver: bridge
+  asko_backend:
+    driver: bridge
+  asko_agents:
+    driver: bridge
+  asko_automation:
+    driver: bridge
+
+# === VOLUMES ===
+
+volumes:
+  asko_postgres_data:
+  asko_redis_data:
+  asko_ollama_models:
+  asko_litellm_data:
+  asko_openwebui_data:
+  asko_caddy_data:
+  asko_caddy_config:

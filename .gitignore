@@ -1,0 +1,27 @@
+# Secrets — NEVER commit
+.env
+
+# Generated configs (created by setup.sh from .template files)
+config/litellm/config.yaml
+config/caddy/Caddyfile
+config/ironclaw/config.toml
+
+# Version lockfile (generated at deploy time)
+.versions
+
+# Backups
+backups/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Docker data (if using bind mounts during dev)
+data/

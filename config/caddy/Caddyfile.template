@@ -1,0 +1,20 @@
+{
+    auto_https off
+    admin off
+}
+
+chat.${DOMAIN_BASE} {
+    reverse_proxy open-webui:8080
+}
+
+n8n.${DOMAIN_BASE} {
+    reverse_proxy n8n:5678
+}
+
+ai.${DOMAIN_BASE} {
+    reverse_proxy litellm:4000
+}
+
+agent.${DOMAIN_BASE} {
+    reverse_proxy ironclaw:3000
+}

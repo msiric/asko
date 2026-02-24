@@ -1,0 +1,345 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# asko setup wizard
+# Generates configuration and starts the AI assistant stack
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ASKO_VERSION="0.1.0"
+
+# --- Colors ---
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+# --- Allow sourcing functions only (for testing) ---
+if [[ "${1:-}" == "--source-only" ]]; then
+    # Define all functions below, but don't execute main()
+    _ASKO_SOURCE_ONLY=true
+fi
+
+# ============================================================
+# Utility Functions
+# ============================================================
+
+info()  { echo -e "${BLUE}[INFO]${NC}  $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+error() { echo -e "${RED}[ERROR]${NC} $*"; }
+fatal() { echo -e "${RED}[FATAL]${NC} $*"; exit 1; }
+
+generate_secret() {
+    local length="${1:-32}"
+    python3 -c "import secrets,string; print(''.join(secrets.choice(string.ascii_letters+string.digits) for _ in range($length)), end='')"
+}
+
+generate_hex_secret() {
+    local length="${1:-64}"
+    python3 -c "import secrets; print(secrets.token_hex($length // 2), end='')"
+}
+
+check_command() {
+    command -v "$1" &>/dev/null
+}
+
+check_architecture() {
+    local arch
+    arch="$(uname -m)"
+    if [[ "$arch" == "x86_64" ]] || [[ "$arch" == "aarch64" ]] || [[ "$arch" == "arm64" ]]; then
+        return 0
+    fi
+    return 1
+}
+
+get_total_ram_gb() {
+    if [[ "$(uname)" == "Darwin" ]]; then
+        sysctl -n hw.memsize | awk '{printf "%d", $1/1073741824}'
+    else
+        free -g | awk '/^Mem:/{print $2}'
+    fi
+}
+
+get_available_disk_gb() {
+    df -BG "$SCRIPT_DIR" 2>/dev/null | awk 'NR==2{gsub("G",""); print $4}' || \
+    df -g "$SCRIPT_DIR" 2>/dev/null | awk 'NR==2{print $4}' || \
+    echo "0"
+}
+
+# ============================================================
+# Pre-flight Checks
+# ============================================================
+
+preflight_checks() {
+    info "Running pre-flight checks..."
+    local errors=0
+
+    # Docker
+    if ! check_command docker; then
+        error "Docker not installed. Install from https://docs.docker.com/engine/install/"
+        errors=$((errors + 1))
+    fi
+
+    # Docker Compose V2
+    if ! docker compose version &>/dev/null 2>&1; then
+        error "Docker Compose V2 not found. Update Docker or install docker-compose-plugin."
+        errors=$((errors + 1))
+    fi
+
+    # Architecture
+    if ! check_architecture; then
+        error "Unsupported architecture: $(uname -m). x86_64 or arm64 required."
+        errors=$((errors + 1))
+    fi
+
+    # RAM
+    local ram_gb
+    ram_gb=$(get_total_ram_gb)
+    if [[ "$ram_gb" -lt 8 ]]; then
+        error "Only ${ram_gb}GB RAM detected. Minimum 8GB required (16GB+ recommended)."
+        errors=$((errors + 1))
+    elif [[ "$ram_gb" -lt 16 ]]; then
+        warn "Only ${ram_gb}GB RAM detected. 16GB+ recommended for comfortable operation."
+    else
+        info "RAM: ${ram_gb}GB detected"
+    fi
+
+    # Disk
+    local disk_gb
+    disk_gb=$(get_available_disk_gb)
+    if [[ "$disk_gb" -lt 20 ]]; then
+        warn "Only ${disk_gb}GB disk free. 50GB+ recommended (models are 5-20GB each)."
+    else
+        info "Disk: ${disk_gb}GB available"
+    fi
+
+    # Tailscale
+    if ! check_command tailscale; then
+        warn "Tailscale not installed. Remote access won't work without it."
+        warn "Install from: https://tailscale.com/download"
+    else
+        info "Tailscale detected"
+    fi
+
+    if [[ "$errors" -gt 0 ]]; then
+        fatal "Pre-flight checks failed with $errors error(s). Fix the above and re-run."
+    fi
+
+    info "Pre-flight checks passed"
+}
+
+# ============================================================
+# Configuration
+# ============================================================
+
+ask_config() {
+    echo ""
+    echo -e "${BOLD}=== asko Configuration ===${NC}"
+    echo ""
+
+    # Domain base
+    read -rp "Domain base [asko.local]: " DOMAIN_BASE
+    DOMAIN_BASE="${DOMAIN_BASE:-asko.local}"
+
+    # Anthropic API key
+    read -rp "Anthropic API key (optional, press Enter to skip): " ANTHROPIC_API_KEY
+    ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}"
+
+    # OpenAI API key
+    read -rp "OpenAI API key (optional, press Enter to skip): " OPENAI_API_KEY
+    OPENAI_API_KEY="${OPENAI_API_KEY:-}"
+
+    # Telegram bot token
+    read -rp "Telegram Bot Token (optional, press Enter to skip): " IRONCLAW_TELEGRAM_BOT_TOKEN
+    IRONCLAW_TELEGRAM_BOT_TOKEN="${IRONCLAW_TELEGRAM_BOT_TOKEN:-}"
+
+    echo ""
+    info "Configuration captured"
+}
+
+# ============================================================
+# File Generation
+# ============================================================
+
+generate_env() {
+    local env_file="${1:-${SCRIPT_DIR}/.env}"
+    info "Generating ${env_file}..."
+
+    local pg_pass
+    pg_pass=$(generate_secret 64)
+
+    cat > "$env_file" <<EOF
+# asko Environment Configuration
+# Generated by setup.sh on $(date -u +%Y-%m-%dT%H:%M:%SZ)
+# DO NOT commit this file to git
+
+# --- PostgreSQL ---
+POSTGRES_USER=asko
+POSTGRES_PASSWORD=${pg_pass}
+POSTGRES_DB=asko
+
+# --- Database URLs ---
+DATABASE_URL=postgresql://asko:${pg_pass}@postgres:5432/asko
+IRONCLAW_DATABASE_URL=postgresql://asko:${pg_pass}@postgres:5432/asko_ironclaw
+N8N_DATABASE_URL=postgresql://asko:${pg_pass}@postgres:5432/asko_n8n
+OPENWEBUI_DATABASE_URL=postgresql://asko:${pg_pass}@postgres:5432/asko_openwebui
+
+# --- LiteLLM ---
+LITELLM_MASTER_KEY=sk-asko-$(generate_secret 48)
+LITELLM_SALT_KEY=$(generate_secret 32)
+
+# --- IronClaw ---
+IRONCLAW_SECRETS_MASTER_KEY=$(generate_hex_secret 64)
+IRONCLAW_LLM_BACKEND=openai_compatible
+IRONCLAW_LLM_BASE_URL=http://litellm:4000/v1
+IRONCLAW_LLM_API_KEY=sk-asko-$(generate_secret 48)
+IRONCLAW_LLM_MODEL=local-default
+IRONCLAW_TELEGRAM_BOT_TOKEN=${IRONCLAW_TELEGRAM_BOT_TOKEN:-}
+IRONCLAW_TELEGRAM_WEBHOOK_SECRET=$(generate_secret 32)
+
+# --- n8n ---
+N8N_ENCRYPTION_KEY=$(generate_secret 32)
+N8N_USER_MANAGEMENT_JWT_SECRET=$(generate_secret 64)
+N8N_BASIC_AUTH_USER=admin
+N8N_BASIC_AUTH_PASSWORD=$(generate_secret 32)
+
+# --- Open WebUI ---
+OPENWEBUI_SECRET_KEY=$(generate_secret 48)
+
+# --- Redis ---
+REDIS_PASSWORD=$(generate_secret 32)
+
+# --- Cloud LLM API Keys ---
+ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+OPENAI_API_KEY=${OPENAI_API_KEY:-}
+
+# --- Domain ---
+DOMAIN_BASE=${DOMAIN_BASE:-asko.local}
+EOF
+
+    chmod 600 "$env_file"
+    info "Environment file generated (chmod 600)"
+}
+
+render_templates() {
+    local env_file="${1:-${SCRIPT_DIR}/.env}"
+    info "Rendering config templates..."
+
+    # Load env vars
+    set -a
+    source "$env_file"
+    set +a
+
+    # Render each template
+    if [[ -f "${SCRIPT_DIR}/config/litellm/config.yaml.template" ]]; then
+        cp "${SCRIPT_DIR}/config/litellm/config.yaml.template" \
+           "${SCRIPT_DIR}/config/litellm/config.yaml"
+        info "  config/litellm/config.yaml"
+    fi
+
+    if [[ -f "${SCRIPT_DIR}/config/caddy/Caddyfile.template" ]]; then
+        envsubst < "${SCRIPT_DIR}/config/caddy/Caddyfile.template" \
+            > "${SCRIPT_DIR}/config/caddy/Caddyfile"
+        info "  config/caddy/Caddyfile"
+    fi
+
+    info "Templates rendered"
+}
+
+# ============================================================
+# Stack Management
+# ============================================================
+
+start_stack() {
+    info "Pulling Docker images (this may take a while on first run)..."
+    cd "$SCRIPT_DIR"
+    docker compose pull
+
+    info "Starting services..."
+    docker compose up -d
+
+    info "Waiting for services to become healthy..."
+    local max_wait=120
+    local elapsed=0
+    while [[ $elapsed -lt $max_wait ]]; do
+        local healthy
+        healthy=$(docker compose ps --format json 2>/dev/null | grep -c '"healthy"' || echo 0)
+        local total
+        total=$(docker compose ps -q 2>/dev/null | wc -l | tr -d ' ')
+
+        if [[ "$healthy" -ge "$total" ]] && [[ "$total" -gt 0 ]]; then
+            info "All $total services healthy"
+            return 0
+        fi
+
+        sleep 5
+        elapsed=$((elapsed + 5))
+        echo -ne "\r  Waiting... ${elapsed}s (${healthy}/${total} healthy)"
+    done
+
+    echo ""
+    warn "Not all services became healthy within ${max_wait}s"
+    warn "Check: docker compose ps"
+}
+
+pull_default_model() {
+    info "Pulling default Ollama model (phi3:3.8b)..."
+    docker compose exec -T ollama ollama pull phi3:3.8b || \
+        warn "Failed to pull phi3:3.8b. You can pull models later with: docker compose exec ollama ollama pull <model>"
+}
+
+# ============================================================
+# Summary
+# ============================================================
+
+print_summary() {
+    local domain_base="${DOMAIN_BASE:-asko.local}"
+    echo ""
+    echo -e "${GREEN}${BOLD}=== asko is running! ===${NC}"
+    echo ""
+    echo -e "  ${BOLD}Chat UI:${NC}     http://chat.${domain_base}"
+    echo -e "  ${BOLD}LiteLLM:${NC}     http://ai.${domain_base}"
+    echo -e "  ${BOLD}n8n:${NC}         http://n8n.${domain_base} (Phase 3)"
+    echo -e "  ${BOLD}IronClaw:${NC}    http://agent.${domain_base} (Phase 2)"
+    echo ""
+    echo -e "  ${BOLD}Next steps:${NC}"
+    echo "  1. Add DNS entries for *.${domain_base} pointing to this machine"
+    echo "     Or access directly via http://localhost:80"
+    echo "  2. Open the Chat UI and create your admin account"
+    echo "  3. Start chatting with your local AI!"
+    echo ""
+    echo -e "  ${BOLD}Useful commands:${NC}"
+    echo "  docker compose ps          # Check service status"
+    echo "  docker compose logs -f     # Follow all logs"
+    echo "  ./scripts/health-check.sh  # Run health checks"
+    echo ""
+}
+
+# ============================================================
+# Main
+# ============================================================
+
+main() {
+    echo ""
+    echo -e "${BOLD}  __ _ ___| | _____  ${NC}"
+    echo -e "${BOLD} / _\` / __| |/ / _ \\ ${NC}"
+    echo -e "${BOLD}| (_| \\__ \\   < (_) |${NC}"
+    echo -e "${BOLD} \\__,_|___/_|\\_\\___/ ${NC} v${ASKO_VERSION}"
+    echo ""
+    echo "Security-first, self-hosted AI assistant stack"
+    echo ""
+
+    preflight_checks
+    ask_config
+    generate_env
+    render_templates
+    start_stack
+    pull_default_model
+    print_summary
+}
+
+# Only run main if not sourced for testing
+if [[ "${_ASKO_SOURCE_ONLY:-}" != "true" ]]; then
+    main "$@"
+fi
