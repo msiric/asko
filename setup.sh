@@ -170,11 +170,6 @@ ask_config() {
     echo ""
     OPENAI_API_KEY="${OPENAI_API_KEY:-}"
 
-    # Telegram bot token
-    read -rsp "Telegram Bot Token (optional, press Enter to skip): " IRONCLAW_TELEGRAM_BOT_TOKEN
-    echo ""
-    IRONCLAW_TELEGRAM_BOT_TOKEN="${IRONCLAW_TELEGRAM_BOT_TOKEN:-}"
-
     echo ""
     info "Configuration captured"
 }
@@ -213,8 +208,6 @@ LITELLM_SALT_KEY=$(generate_secret 32)
 
 # --- IronClaw ---
 IRONCLAW_SECRETS_MASTER_KEY=$(generate_hex_secret 64)
-IRONCLAW_TELEGRAM_BOT_TOKEN=${IRONCLAW_TELEGRAM_BOT_TOKEN:-}
-IRONCLAW_TELEGRAM_WEBHOOK_SECRET=$(generate_secret 32)
 
 # --- n8n ---
 N8N_ENCRYPTION_KEY=$(generate_secret 32)
@@ -322,8 +315,8 @@ print_summary() {
     echo ""
     echo -e "  ${BOLD}Chat UI:${NC}     http://chat.${domain_base}"
     echo -e "  ${BOLD}LiteLLM:${NC}     http://ai.${domain_base}"
-    echo -e "  ${BOLD}n8n:${NC}         http://n8n.${domain_base} (Phase 3)"
-    echo -e "  ${BOLD}IronClaw:${NC}    http://agent.${domain_base} (Phase 2)"
+    echo -e "  ${BOLD}n8n:${NC}         http://n8n.${domain_base}"
+    echo -e "  ${BOLD}IronClaw:${NC}    http://agent.${domain_base}"
     echo ""
     echo -e "  ${BOLD}Next steps:${NC}"
     echo "  1. Add DNS entries for *.${domain_base} pointing to this machine"
