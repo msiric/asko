@@ -20,8 +20,8 @@ docker compose images --format json > .versions 2>/dev/null || true
 echo ""
 echo -e "${YELLOW}Step 3: Rolling restart...${NC}"
 
-echo "  Restarting data layer (postgres, redis)..."
-docker compose up -d --remove-orphans postgres redis
+echo "  Restarting data layer (postgres, searxng)..."
+docker compose up -d --remove-orphans postgres searxng
 sleep 5
 
 echo "  Restarting inference layer (ollama, litellm)..."

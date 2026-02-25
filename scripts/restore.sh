@@ -43,7 +43,7 @@ fi
 
 # Stop application services before database restore (postgres stays running)
 echo -e "${YELLOW}Stopping application services...${NC}"
-docker compose stop ironclaw open-webui n8n litellm caddy 2>/dev/null || true
+docker compose stop ironclaw open-webui n8n litellm searxng caddy 2>/dev/null || true
 
 # Restore databases (drop and recreate to avoid conflicts)
 echo -e "${YELLOW}Restoring databases...${NC}"

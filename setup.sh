@@ -371,8 +371,6 @@ print(json.dumps({
     local imported=0
     for workflow in "${SCRIPT_DIR}/workflows/n8n/"*.json; do
         [[ -f "$workflow" ]] || continue
-        local name
-        name=$(basename "$workflow" .json)
         if docker compose exec -T n8n n8n import:workflow --input=/dev/stdin < "$workflow" > /dev/null 2>&1; then
             imported=$((imported + 1))
         fi
