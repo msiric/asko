@@ -1,0 +1,75 @@
+{
+  "name": "Daily Summary",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 8 * * *" }]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Every Morning 8AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "model": "local-default",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are asko, a personal assistant. Generate a brief, friendly morning briefing. Include: a motivational greeting, a reminder to check the weather and calendar. Keep it under 200 words."
+            },
+            {
+              "role": "user",
+              "content": "Generate my morning briefing for today."
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 512,
+          "temperature": 0.8
+        }
+      },
+      "id": "ai-summary",
+      "name": "Generate Summary",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "litellm",
+          "name": "LiteLLM"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "noop",
+      "name": "Send Notification",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [750, 300]
+    }
+  ],
+  "connections": {
+    "Every Morning 8AM": {
+      "main": [
+        [{ "node": "Generate Summary", "type": "main", "index": 0 }]
+      ]
+    },
+    "Generate Summary": {
+      "main": [
+        [{ "node": "Send Notification", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Generates a daily morning briefing using AI. Connect the 'Send Notification' node to Telegram, email, or WhatsApp."
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "name": "URL Summarizer",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "summarize-url",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-trigger",
+      "name": "URL Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body.url }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "fetch-url",
+      "name": "Fetch URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "model": "local-default",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Summarize the following web page content in 3-5 bullet points. Be concise and extract the key information."
+            },
+            {
+              "role": "user",
+              "content": "={{ $json.data.substring(0, 4000) }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 512,
+          "temperature": 0.3
+        }
+      },
+      "id": "ai-summarize",
+      "name": "AI Summarize",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "litellm",
+          "name": "LiteLLM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ summary: $json.message.content }) }}"
+      },
+      "id": "respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "URL Webhook": {
+      "main": [
+        [{ "node": "Fetch URL", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fetch URL": {
+      "main": [
+        [{ "node": "AI Summarize", "type": "main", "index": 0 }]
+      ]
+    },
+    "AI Summarize": {
+      "main": [
+        [{ "node": "Respond", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Send a URL via POST, get an AI-generated summary back. Useful for quickly digesting articles and web pages."
+  }
+}
