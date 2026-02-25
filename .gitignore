@@ -9,8 +9,9 @@ config/ironclaw/config.toml
 # Version lockfile (generated at deploy time)
 .versions
 
-# Backups
+# Backups and logs
 backups/
+logs/
 
 # OS files
 .DS_Store

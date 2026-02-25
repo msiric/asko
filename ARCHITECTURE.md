@@ -2,7 +2,7 @@
 
 ## Overview
 
-asko is a Docker Compose stack of 9 services communicating over 4 isolated networks.
+asko is a Docker Compose stack of 9 always-on services + 5 optional (profiled) services, communicating over 5 isolated networks.
 
 ```
                     ┌─────────────────────────────────────┐
@@ -21,45 +21,56 @@ asko is a Docker Compose stack of 9 services communicating over 4 isolated netwo
             [asko_backend] [asko_agents]  [asko_automation]
                     │            │          │       │  │
                ┌────┴────┐      │     ┌────┴───┐   │  │
-               │ Ollama   │      │     │Postgres│   │  │
-               │ (LLMs)   │◄─────┘     │(pgvec) │◄──┘  │
-               └──────────┘             └────────┘      │
-                                        ┌────────┐      │
-                                        │ Redis  │◄─────┘
-                                        └────────┘
-                                        ┌────────┐
-                                        │ WAHA   │ [asko_automation]
-                                        │(WhatsApp)│
-                                        └────────┘
+               │ Ollama   │◄─────┘     │Postgres│◄──┘  │
+               │ (LLMs)   │           │(pgvec) │       │
+               └──────────┘           └────────┘       │
+               ┌──────────┐                            │
+               │ SearXNG  │  [asko_backend]            │
+               │ (search) │                            │
+               └──────────┘                            │
 ```
 
 ## Services
 
+### Always-on
+
 | Service | Image | Purpose | Port |
 |---------|-------|---------|------|
 | **Caddy** | `caddy:2.9-alpine` | Reverse proxy, only service exposing host ports | 80, 443 |
-| **Open WebUI** | `ghcr.io/open-webui/open-webui:main` | Browser-based AI chat with multi-user RBAC | 8080 (internal) |
-| **IronClaw** | `ghcr.io/nearai/ironclaw:latest` | WASM-sandboxed AI agent for Telegram/Signal | 3000 (internal) |
-| **LiteLLM** | `ghcr.io/berriai/litellm:main-stable` | Unified LLM proxy — local-first, cloud fallback | 4000 (internal) |
+| **Open WebUI** | `ghcr.io/open-webui/open-webui:v0.6.6` | Browser-based AI chat with multi-user RBAC, web search, Document RAG | 8080 (internal) |
+| **IronClaw** | `ghcr.io/nearai/ironclaw:v0.11.1` | WASM-sandboxed AI agent for Telegram/Signal | 3000 (internal) |
+| **LiteLLM** | `ghcr.io/berriai/litellm:main-v1.63.2` | Unified LLM proxy — local-first, cloud fallback | 4000 (internal) |
+| **SearXNG** | `searxng/searxng:latest` | Private web search (JSON API for Open WebUI and n8n) | 8080 (internal) |
 | **Ollama** | `ollama/ollama:0.6` | Local LLM inference (CPU) | 11434 (internal) |
-| **n8n** | `n8nio/n8n:latest` | Workflow automation + WhatsApp bridge | 5678 (internal) |
-| **WAHA** | `devlikeapro/waha:latest` | WhatsApp Web API bridge | 3000 (internal) |
-| **PostgreSQL** | `pgvector/pgvector:pg16` | Database with vector search | 5432 (internal) |
-| **Redis** | `redis:7.4-alpine` | Session cache | 6379 (internal) |
+| **n8n** | `n8nio/n8n:1.76.1` | Workflow automation + WhatsApp bridge | 5678 (internal) |
+| **PostgreSQL** | `pgvector/pgvector:pg16` | Database with vector search (5 databases) | 5432 (internal) |
+
+### Optional (profiles)
+
+| Service | Profile | Image | Purpose |
+|---------|---------|-------|---------|
+| **WAHA** | `whatsapp` | `devlikeapro/waha:2024.12` | WhatsApp Web API bridge |
+| **LinguaCafe** | `linguacafe` | `ghcr.io/simjanos-dev/linguacafe-webserver:v0.14.1` | Language learning (Czech, Croatian, English) |
+| **LinguaCafe DB** | `linguacafe` | `mysql:8.0` | MySQL for LinguaCafe |
+| **LinguaCafe Redis** | `linguacafe` | `redis:7.2-alpine` | Cache for LinguaCafe |
+| **LinguaCafe NLP** | `linguacafe` | `ghcr.io/simjanos-dev/linguacafe-python-service:v0.14.1` | NLP tokenizer |
 
 ## Network Isolation
 
-| Service | asko_proxy | asko_backend | asko_agents | asko_automation |
-|---------|:---:|:---:|:---:|:---:|
-| Caddy | yes | - | - | - |
-| Open WebUI | yes | yes | - | - |
-| IronClaw | yes | - | yes | - |
-| LiteLLM | yes | yes | yes | yes |
-| Ollama | - | yes | - | - |
-| PostgreSQL | - | yes | - | yes |
-| Redis | - | yes | - | yes |
-| n8n | yes | - | - | yes |
-| WAHA | - | - | - | yes |
+| Service | asko_proxy | asko_backend | asko_agents | asko_automation | asko_linguacafe |
+|---------|:---:|:---:|:---:|:---:|:---:|
+| Caddy | yes | - | - | - | - |
+| Open WebUI | yes | yes | - | - | - |
+| IronClaw | yes | yes | yes | - | - |
+| LiteLLM | yes | yes | yes | yes | - |
+| SearXNG | - | yes | - | - | - |
+| Ollama | - | yes | - | - | - |
+| PostgreSQL | - | yes | - | yes | - |
+| n8n | yes | - | - | yes | - |
+| WAHA | - | - | - | yes | - |
+| LinguaCafe * | - | - | - | - | yes |
+
+\* All 4 LinguaCafe services are isolated on `asko_linguacafe` with no cross-talk to the main stack.
 
 ## Data Flow
 
@@ -68,6 +79,13 @@ asko is a Docker Compose stack of 9 services communicating over 4 isolated netwo
 ```
 User browser → Caddy → Open WebUI → LiteLLM → Ollama (local)
                                               → Claude/GPT (cloud fallback)
+```
+
+### Web Search (Open WebUI + SearXNG)
+
+```
+User toggles "Search the web" → Open WebUI → SearXNG → external search engines
+                                           → LiteLLM → AI summarizes results
 ```
 
 ### Telegram (IronClaw)

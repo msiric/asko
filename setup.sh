@@ -332,22 +332,38 @@ post_setup() {
 
     # --- Open WebUI: create admin account ---
     info "Creating Open WebUI admin account..."
-    local webui_response
-    webui_response=$(docker compose exec -T open-webui \
+    local webui_payload
+    webui_payload=$(python3 -c "
+import json, os
+print(json.dumps({
+    'email': os.environ.get('ADMIN_EMAIL', ''),
+    'password': os.environ.get('ADMIN_PASSWORD', ''),
+    'name': 'Admin'
+}))")
+    docker compose exec -T open-webui \
         curl -sf -X POST http://localhost:8080/api/v1/auths/signup \
         -H "Content-Type: application/json" \
-        -d "{\"email\":\"${ADMIN_EMAIL}\",\"password\":\"${ADMIN_PASSWORD}\",\"name\":\"Admin\"}" \
-        2>/dev/null) && info "  Open WebUI admin created" \
+        -d "$webui_payload" > /dev/null 2>&1 \
+        && info "  Open WebUI admin created" \
         || warn "  Open WebUI admin already exists or signup failed (configure manually)"
 
     # --- n8n: create owner account ---
     info "Creating n8n owner account..."
+    local n8n_payload
+    n8n_payload=$(python3 -c "
+import json, os
+print(json.dumps({
+    'email': os.environ.get('ADMIN_EMAIL', ''),
+    'firstName': 'Admin',
+    'lastName': 'Asko',
+    'password': os.environ.get('ADMIN_PASSWORD', '')
+}))")
     docker compose exec -T n8n \
         curl -sf -X POST http://localhost:5678/rest/owner/setup \
         -u "${N8N_BASIC_AUTH_USER}:${N8N_BASIC_AUTH_PASSWORD}" \
         -H "Content-Type: application/json" \
-        -d "{\"email\":\"${ADMIN_EMAIL}\",\"firstName\":\"Admin\",\"lastName\":\"Asko\",\"password\":\"${ADMIN_PASSWORD}\"}" \
-        > /dev/null 2>&1 && info "  n8n owner created" \
+        -d "$n8n_payload" > /dev/null 2>&1 \
+        && info "  n8n owner created" \
         || warn "  n8n owner already exists or setup failed (configure manually at n8n.${DOMAIN_BASE})"
 
     # --- n8n: import workflows ---
@@ -365,8 +381,9 @@ post_setup() {
 
     # --- Backup crontab ---
     info "Setting up daily backup cron (3:00 AM)..."
+    mkdir -p "${SCRIPT_DIR}/logs"
     local backup_cmd="${SCRIPT_DIR}/scripts/backup.sh"
-    local cron_entry="0 3 * * * ${backup_cmd} >> /var/log/asko-backup.log 2>&1"
+    local cron_entry="0 3 * * * ${backup_cmd} >> ${SCRIPT_DIR}/logs/backup.log 2>&1"
     if crontab -l 2>/dev/null | grep -qF "$backup_cmd"; then
         info "  Backup cron already configured"
     else

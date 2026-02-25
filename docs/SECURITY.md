@@ -55,9 +55,9 @@ sudo systemctl restart docker
 
 ```
 asko_proxy      — Caddy + services that need reverse proxying
-asko_backend    — LiteLLM, Ollama, PostgreSQL, Redis
+asko_backend    — LiteLLM, Ollama, PostgreSQL, SearXNG, IronClaw, Open WebUI
 asko_agents     — IronClaw, LiteLLM
-asko_automation — n8n, LiteLLM, PostgreSQL, Redis
+asko_automation — n8n, LiteLLM, PostgreSQL, WAHA
 ```
 
 Key isolation guarantees:
@@ -82,7 +82,7 @@ Every container has:
 | Memory limits | Per-service `deploy.resources.limits.memory` |
 | Health checks | Per-service `healthcheck` with interval/timeout/retries |
 | Restart policy | `restart: unless-stopped` |
-| Read-only filesystem | Caddy and Redis run `read_only: true` |
+| Read-only filesystem | Caddy runs `read_only: true` |
 
 ## Application Level
 

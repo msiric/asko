@@ -36,14 +36,15 @@ The setup wizard detects your hardware, generates secure credentials, pulls Dock
                     │            │          │       │  │
                ┌────┴────┐      │     ┌────┴───┐   │  │
                │ Ollama   │◄─────┘     │Postgres│◄──┘  │
-               │ (LLMs)   │           │(pgvec) │      │
-               └──────────┘           └────────┘      │
-                                      ┌────────┐      │
-                                      │ Redis  │◄─────┘
-                                      └────────┘
+               │ (LLMs)   │           │(pgvec) │       │
+               └──────────┘           └────────┘       │
+               ┌──────────┐                            │
+               │ SearXNG  │  [asko_backend]            │
+               │ (search) │                            │
+               └──────────┘                            │
 ```
 
-4 isolated Docker networks enforce least-privilege communication. Only Caddy exposes host ports. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
+5 isolated Docker networks enforce least-privilege communication. Only Caddy exposes host ports. See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
 ## Hardware Requirements
 
@@ -67,7 +68,6 @@ The setup wizard detects your hardware, generates secure credentials, pulls Dock
 | **WAHA** | WhatsApp Web API bridge (opt-in) |
 | **LinguaCafe** | Language learning: Czech, Croatian, English (opt-in) |
 | **PostgreSQL** | Database with pgvector for embeddings |
-| **Redis** | Session cache |
 | **Caddy** | Reverse proxy |
 
 ## Security

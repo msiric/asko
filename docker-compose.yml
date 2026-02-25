@@ -53,13 +53,14 @@ services:
   # === SEARCH LAYER ===
 
   searxng:
+    # :latest is intentional — SearXNG uses commit-hash tags (e.g. 2024.12.22-c36a2a54d)
+    # that are impractical to pin. Internal-only service, not on proxy network.
     image: searxng/searxng:latest
     container_name: asko-searxng
     networks:
       - asko_backend
     volumes:
       - ./config/searxng/settings.yml:/etc/searxng/settings.yml:ro
-      - asko_searxng_data:/etc/searxng
     environment:
       SEARXNG_SECRET: ${SEARXNG_SECRET}
     deploy:
@@ -479,7 +480,6 @@ networks:
 
 volumes:
   asko_postgres_data:
-  asko_searxng_data:
   asko_ollama_models:
   asko_litellm_data:
   asko_ironclaw_data:
