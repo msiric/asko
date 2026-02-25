@@ -24,8 +24,12 @@ N8N_USER_MANAGEMENT_JWT_SECRET=test-jwt-secret-64chars-aaaaaaaaaaaaaaaaaaaaaaaaa
 N8N_BASIC_AUTH_USER=admin
 N8N_BASIC_AUTH_PASSWORD=test-auth-password-32chars-aaaaa
 OPENWEBUI_SECRET_KEY=test-webui-secret-48chars-aaaaaaaaaaaaaaaaaaaaaaa
+SEARXNG_SECRET=test-searxng-secret-32chars-aaaaaaa
+LINGUACAFE_DB_PASSWORD=test-linguacafe-password-32chars
 ANTHROPIC_API_KEY=
 OPENAI_API_KEY=
+AMADEUS_API_KEY=
+AMADEUS_API_SECRET=
 DOMAIN_BASE=asko.local
 EOF
 }

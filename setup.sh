@@ -218,9 +218,19 @@ N8N_BASIC_AUTH_PASSWORD=$(generate_secret 32)
 # --- Open WebUI ---
 OPENWEBUI_SECRET_KEY=$(generate_secret 48)
 
+# --- SearXNG ---
+SEARXNG_SECRET=$(generate_secret 32)
+
+# --- LinguaCafe ---
+LINGUACAFE_DB_PASSWORD=$(generate_secret 32)
+
 # --- Cloud LLM API Keys ---
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
 OPENAI_API_KEY=${OPENAI_API_KEY:-}
+
+# --- Amadeus Flight API ---
+AMADEUS_API_KEY=
+AMADEUS_API_SECRET=
 
 # --- Domain ---
 DOMAIN_BASE=${DOMAIN_BASE:-asko.local}

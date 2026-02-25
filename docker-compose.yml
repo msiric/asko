@@ -50,6 +50,37 @@ services:
     shm_size: '256m'
     restart: unless-stopped
 
+  # === SEARCH LAYER ===
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: asko-searxng
+    networks:
+      - asko_backend
+    volumes:
+      - ./config/searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - asko_searxng_data:/etc/searxng
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET}
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
   # === INFERENCE LAYER ===
 
   ollama:
@@ -181,6 +212,10 @@ services:
       WEBUI_AUTH: "true"
       ENABLE_SIGNUP: "false"
       WEBUI_SECRET_KEY: ${OPENWEBUI_SECRET_KEY}
+      ENABLE_RAG_WEB_SEARCH: "True"
+      RAG_WEB_SEARCH_ENGINE: "searxng"
+      SEARXNG_QUERY_URL: "http://searxng:8080/search?q=<query>"
+      RAG_WEB_SEARCH_RESULT_COUNT: "3"
     depends_on:
       litellm:
         condition: service_healthy
@@ -286,6 +321,105 @@ services:
       - ALL
     restart: unless-stopped
 
+  # === LANGUAGE LEARNING (opt-in: --profile linguacafe) ===
+
+  linguacafe:
+    image: ghcr.io/simjanos-dev/linguacafe-webserver:v0.14.1
+    container_name: asko-linguacafe
+    profiles: ["linguacafe"]
+    networks:
+      - asko_linguacafe
+    ports:
+      - "9191:80"
+    volumes:
+      - asko_linguacafe_storage:/var/www/html/storage
+    environment:
+      DB_DATABASE: linguacafe
+      DB_USERNAME: linguacafe
+      DB_PASSWORD: ${LINGUACAFE_DB_PASSWORD}
+      DB_HOST: linguacafe-db
+      DB_PORT: "3306"
+    depends_on:
+      linguacafe-db:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  linguacafe-db:
+    image: mysql:8.0
+    container_name: asko-linguacafe-db
+    profiles: ["linguacafe"]
+    networks:
+      - asko_linguacafe
+    volumes:
+      - asko_linguacafe_db:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: linguacafe
+      MYSQL_USER: linguacafe
+      MYSQL_PASSWORD: ${LINGUACAFE_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${LINGUACAFE_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+  linguacafe-redis:
+    image: redis:7.2-alpine
+    container_name: asko-linguacafe-redis
+    profiles: ["linguacafe"]
+    networks:
+      - asko_linguacafe
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    restart: unless-stopped
+
+  linguacafe-nlp:
+    image: ghcr.io/simjanos-dev/linguacafe-python-service:v0.14.1
+    container_name: asko-linguacafe-nlp
+    profiles: ["linguacafe"]
+    networks:
+      - asko_linguacafe
+    command: python3 tokenizer.py
+    volumes:
+      - asko_linguacafe_storage:/var/www/html/storage/app/model
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
   # === PROXY LAYER ===
 
   caddy:
@@ -338,11 +472,14 @@ networks:
     driver: bridge
   asko_automation:
     driver: bridge
+  asko_linguacafe:
+    driver: bridge
 
 # === VOLUMES ===
 
 volumes:
   asko_postgres_data:
+  asko_searxng_data:
   asko_ollama_models:
   asko_litellm_data:
   asko_ironclaw_data:
@@ -351,3 +488,5 @@ volumes:
   asko_openwebui_data:
   asko_caddy_data:
   asko_caddy_config:
+  asko_linguacafe_storage:
+  asko_linguacafe_db:

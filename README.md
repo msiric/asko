@@ -63,7 +63,9 @@ The setup wizard detects your hardware, generates secure credentials, pulls Dock
 | **Open WebUI** | Browser-based chat (multi-user) |
 | **IronClaw** | WASM-sandboxed AI agent (Telegram, Signal) |
 | **n8n** | Workflow automation + WhatsApp bridge |
-| **WAHA** | WhatsApp Web API bridge |
+| **SearXNG** | Private web search (enables AI web search in chat) |
+| **WAHA** | WhatsApp Web API bridge (opt-in) |
+| **LinguaCafe** | Language learning: Czech, Croatian, English (opt-in) |
 | **PostgreSQL** | Database with pgvector for embeddings |
 | **Redis** | Session cache |
 | **Caddy** | Reverse proxy |

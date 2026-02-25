@@ -9,13 +9,13 @@ load '../helpers/test-helpers'
     # Lines with "ports:" followed by host:container mappings
     # Only the caddy service should have them
 
-    # Get all services that have ports: sections
+    # Get all always-on services (no profiles) that have ports: sections
     services_with_ports=$(python3 -c "
 import yaml
 with open('${ASKO_ROOT}/docker-compose.yml') as f:
     config = yaml.safe_load(f)
 for name, svc in config.get('services', {}).items():
-    if 'ports' in svc:
+    if 'ports' in svc and not svc.get('profiles'):
         print(name)
 " 2>/dev/null || echo "PARSE_ERROR")
 

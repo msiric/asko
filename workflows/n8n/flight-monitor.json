@@ -1,0 +1,88 @@
+{
+  "name": "Flight Price Monitor (Prague-Split)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Daily 10AM Check",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://test.api.amadeus.com/v2/shopping/flight-offers?originLocationCode=PRG&destinationLocationCode=SPU&departureDate={{ $now.plus(14, 'days').toFormat('yyyy-MM-dd') }}&adults=1&currencyCode=EUR&max=3",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "id": "flight-search",
+      "name": "Search Flights (Amadeus)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "model": "local-default",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a flight price analyzer. Extract the cheapest flight price from the Amadeus API response. Return ONLY a JSON object: {\"price\": number, \"airline\": \"string\", \"departure\": \"datetime\", \"arrival\": \"datetime\"}. If no flights found, return {\"price\": null}."
+            },
+            {
+              "role": "user",
+              "content": "{{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 128,
+          "temperature": 0.1
+        }
+      },
+      "id": "ai-parse",
+      "name": "Parse Cheapest",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {},
+      "id": "send-alert",
+      "name": "Send Alert to Telegram",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "Daily 10AM Check": {
+      "main": [[{"node": "Search Flights (Amadeus)", "type": "main", "index": 0}]]
+    },
+    "Search Flights (Amadeus)": {
+      "main": [[{"node": "Parse Cheapest", "type": "main", "index": 0}]]
+    },
+    "Parse Cheapest": {
+      "main": [[{"node": "Send Alert to Telegram", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Monitors Prague (PRG) to Split (SPU) flight prices via Amadeus API (free tier: 2000 searches/month). Requires Amadeus API credentials. Replace 'Send Alert' no-op with Telegram node. Configure with your Amadeus API key at https://developers.amadeus.com",
+    "instanceId": "",
+    "templateCredsSetupCompleted": false
+  }
+}

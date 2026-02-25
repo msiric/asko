@@ -1,0 +1,86 @@
+{
+  "name": "Morning Briefing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Every Morning 8AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.open-meteo.com/v1/forecast?latitude=50.0755&longitude=14.4378&current=temperature_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code&forecast_days=2&timezone=Europe/Prague",
+        "options": {}
+      },
+      "id": "weather-api",
+      "name": "Get Prague Weather",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "model": "local-default",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are asko, a personal AI assistant. Generate a brief, friendly morning briefing based on the weather data provided. Include: current temperature, today's high/low, precipitation forecast, and a short motivational note. Keep it under 150 words. Use Celsius."
+            },
+            {
+              "role": "user",
+              "content": "Here is today's weather data for Prague: {{ JSON.stringify($json) }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 256,
+          "temperature": 0.7
+        }
+      },
+      "id": "ai-briefing",
+      "name": "Generate Briefing",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {},
+      "id": "send-notification",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "Every Morning 8AM": {
+      "main": [[{"node": "Get Prague Weather", "type": "main", "index": 0}]]
+    },
+    "Get Prague Weather": {
+      "main": [[{"node": "Generate Briefing", "type": "main", "index": 0}]]
+    },
+    "Generate Briefing": {
+      "main": [[{"node": "Send to Telegram", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Daily morning briefing with Prague weather from Open-Meteo (free, no API key). Replace the 'Send to Telegram' no-op node with a Telegram node and configure your bot token and chat ID.",
+    "instanceId": "",
+    "templateCredsSetupCompleted": false
+  }
+}

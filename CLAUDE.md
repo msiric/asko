@@ -53,6 +53,8 @@ bats tests/templates/                                     # Template rendering
 - `setup.sh` supports `--source-only` to expose functions for unit testing without executing `main()`
 - `scripts/common.sh` uses `BASH_SOURCE[1]` to resolve paths relative to the calling script
 - WAHA is behind Docker Compose `profiles: ["whatsapp"]` — only starts with `--profile whatsapp`
+- LinguaCafe is behind `profiles: ["linguacafe"]` with its own isolated network `asko_linguacafe`
+- SearXNG is always-on, on `asko_backend` — provides web search to Open WebUI and n8n
 - All services talk to LLMs through LiteLLM at `http://litellm:4000/v1`, never directly to Ollama
 
 ## Do NOT

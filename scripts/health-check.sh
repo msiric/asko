@@ -23,6 +23,7 @@ echo ""
 cd "$ASKO_ROOT"
 
 check "PostgreSQL" docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-asko}"
+check "SearXNG" docker compose exec -T searxng wget -q --spider http://localhost:8080/
 check "Ollama" docker compose exec -T ollama curl -sf http://localhost:11434/api/tags
 check "LiteLLM" docker compose exec -T litellm curl -sf http://localhost:4000/health
 check "IronClaw" docker compose exec -T ironclaw curl -sf http://localhost:3000/api/health

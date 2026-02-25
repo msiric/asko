@@ -14,6 +14,18 @@ load '../helpers/test-helpers'
     [[ -f "${ASKO_ROOT}/workflows/n8n/url-summarizer.json" ]]
 }
 
+@test "morning-briefing workflow exists" {
+    [[ -f "${ASKO_ROOT}/workflows/n8n/morning-briefing.json" ]]
+}
+
+@test "rss-news-digest workflow exists" {
+    [[ -f "${ASKO_ROOT}/workflows/n8n/rss-news-digest.json" ]]
+}
+
+@test "flight-monitor workflow exists" {
+    [[ -f "${ASKO_ROOT}/workflows/n8n/flight-monitor.json" ]]
+}
+
 @test "all workflow files are valid JSON" {
     for wf in "${ASKO_ROOT}"/workflows/n8n/*.json; do
         [[ -f "$wf" ]] || continue
