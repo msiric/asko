@@ -115,10 +115,9 @@ elif isinstance(nets, dict):
     ! echo "$networks" | grep -q "asko_automation"
 }
 
-@test "only caddy and litellm are on the proxy network" {
-    # Services on asko_proxy should be: caddy, open-webui, litellm, ironclaw, n8n (when added)
-    # Ollama, postgres, redis should NOT be on proxy
-    for svc in ollama postgres redis; do
+@test "data services are not on the proxy network" {
+    # Ollama and postgres should NOT be on proxy
+    for svc in ollama postgres; do
         networks=$(get_service_networks "$svc")
         if [[ -z "$networks" ]]; then
             skip "python3 yaml not available"

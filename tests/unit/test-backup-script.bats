@@ -36,6 +36,11 @@ load '../helpers/test-helpers'
     grep -q "tail\|rotate\|retain\|older" "${ASKO_ROOT}/scripts/backup.sh"
 }
 
+@test "backup.sh verifies dump integrity" {
+    # Should check dump file size to detect partial/empty dumps
+    grep -q "stat\|size\|\-s " "${ASKO_ROOT}/scripts/backup.sh"
+}
+
 @test "update.sh runs backup before updating" {
     # The update script should call backup first
     grep -q "backup" "${ASKO_ROOT}/scripts/update.sh"
@@ -47,4 +52,16 @@ load '../helpers/test-helpers'
 
 @test "import-workflows.sh imports from workflows/n8n directory" {
     grep -q "workflows/n8n" "${ASKO_ROOT}/scripts/import-workflows.sh"
+}
+
+@test "restore.sh stops services before database restore" {
+    grep -q "docker compose stop" "${ASKO_ROOT}/scripts/restore.sh"
+}
+
+@test "restore.sh drops databases before restore" {
+    grep -q "dropdb" "${ASKO_ROOT}/scripts/restore.sh"
+}
+
+@test "restore.sh restarts services after restore" {
+    grep -q "docker compose up" "${ASKO_ROOT}/scripts/restore.sh"
 }

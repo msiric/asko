@@ -5,7 +5,8 @@
 
 set -euo pipefail
 
-# Resolve paths relative to the sourcing script
+# BASH_SOURCE[1] refers to the script that sourced this file (the caller),
+# not common.sh itself ([0]). This lets us resolve paths relative to the caller.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"
 ASKO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
@@ -29,5 +30,7 @@ load_env() {
         # shellcheck source=/dev/null
         source "${ASKO_ROOT}/.env"
         set +a
+    else
+        warn "No .env file found at ${ASKO_ROOT}/.env"
     fi
 }

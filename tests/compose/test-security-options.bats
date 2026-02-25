@@ -81,9 +81,8 @@ assert caddy.get('read_only') == True, f'caddy read_only is {caddy.get(\"read_on
     }
 }
 
-@test "redis is read-only" {
+@test "no unused services provisioned" {
     cd "${ASKO_ROOT}"
-
-    # Check the compose file directly for redis read_only
-    grep -A 30 "asko-redis" "${ASKO_ROOT}/docker-compose.yml" | grep -q "read_only: true"
+    # Redis was removed (YAGNI — no service connected to it)
+    ! grep -q "asko-redis" "${ASKO_ROOT}/docker-compose.yml"
 }

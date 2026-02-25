@@ -114,6 +114,18 @@ preflight_checks() {
         info "Disk: ${disk_gb}GB available"
     fi
 
+    # python3 (required for secret generation)
+    if ! check_command python3; then
+        error "python3 not installed. Required for secret generation."
+        errors=$((errors + 1))
+    fi
+
+    # envsubst (required for config template rendering)
+    if ! check_command envsubst; then
+        error "envsubst not found. Install with: sudo apt-get install gettext-base"
+        errors=$((errors + 1))
+    fi
+
     # Tailscale
     if ! check_command tailscale; then
         warn "Tailscale not installed. Remote access won't work without it."
@@ -138,9 +150,15 @@ ask_config() {
     echo -e "${BOLD}=== asko Configuration ===${NC}"
     echo ""
 
-    # Domain base
-    read -rp "Domain base [asko.local]: " DOMAIN_BASE
-    DOMAIN_BASE="${DOMAIN_BASE:-asko.local}"
+    # Domain base (validated: no spaces, no protocol prefix)
+    while true; do
+        read -rp "Domain base [asko.local]: " DOMAIN_BASE
+        DOMAIN_BASE="${DOMAIN_BASE:-asko.local}"
+        if [[ "$DOMAIN_BASE" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ ]]; then
+            break
+        fi
+        warn "Invalid domain. Use only letters, numbers, dots, and hyphens (e.g., asko.local)"
+    done
 
     # Anthropic API key (silent input to prevent shoulder-surfing)
     read -rsp "Anthropic API key (optional, press Enter to skip): " ANTHROPIC_API_KEY
@@ -187,7 +205,6 @@ POSTGRES_DB=asko
 # --- Database URLs ---
 DATABASE_URL=postgresql://asko:${pg_pass}@postgres:5432/asko
 IRONCLAW_DATABASE_URL=postgresql://asko:${pg_pass}@postgres:5432/asko_ironclaw
-N8N_DATABASE_URL=postgresql://asko:${pg_pass}@postgres:5432/asko_n8n
 OPENWEBUI_DATABASE_URL=postgresql://asko:${pg_pass}@postgres:5432/asko_openwebui
 
 # --- LiteLLM ---
@@ -207,9 +224,6 @@ N8N_BASIC_AUTH_PASSWORD=$(generate_secret 32)
 
 # --- Open WebUI ---
 OPENWEBUI_SECRET_KEY=$(generate_secret 48)
-
-# --- Redis ---
-REDIS_PASSWORD=$(generate_secret 32)
 
 # --- Cloud LLM API Keys ---
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
@@ -250,12 +264,6 @@ render_templates() {
         envsubst < "${SCRIPT_DIR}/config/ironclaw/config.toml.template" \
             > "${SCRIPT_DIR}/config/ironclaw/config.toml"
         info "  config/ironclaw/config.toml"
-    fi
-
-    if [[ -f "${SCRIPT_DIR}/config/redis/redis.conf.template" ]]; then
-        envsubst < "${SCRIPT_DIR}/config/redis/redis.conf.template" \
-            > "${SCRIPT_DIR}/config/redis/redis.conf"
-        info "  config/redis/redis.conf"
     fi
 
     info "Templates rendered"
@@ -344,15 +352,38 @@ main() {
     echo "Security-first, self-hosted AI assistant stack"
     echo ""
 
-    # Idempotency: warn if .env already exists
+    # Idempotency: detect existing installation
     if [[ -f "${SCRIPT_DIR}/.env" ]]; then
-        warn ".env already exists. Running setup again will regenerate all secrets"
-        warn "and break running services."
-        read -rp "Continue? (y/N) " confirm
-        if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-            echo "Aborted. Use 'docker compose up -d' to start existing configuration."
-            exit 0
-        fi
+        info "Existing installation detected (.env found)"
+        echo ""
+        echo "  1) Start services with existing config"
+        echo "  2) Reset everything (WARNING: regenerates all secrets, breaks running services)"
+        echo "  3) Abort"
+        echo ""
+        read -rp "Choice [1]: " choice
+        choice="${choice:-1}"
+
+        case "$choice" in
+            1)
+                info "Starting with existing configuration..."
+                cd "$SCRIPT_DIR"
+                docker compose up -d
+                print_summary
+                return 0
+                ;;
+            2)
+                warn "This will regenerate ALL secrets and require re-initializing databases."
+                read -rp "Type 'RESET' to confirm: " confirm
+                if [[ "$confirm" != "RESET" ]]; then
+                    echo "Aborted."
+                    exit 0
+                fi
+                ;;
+            *)
+                echo "Aborted."
+                exit 0
+                ;;
+        esac
     fi
 
     preflight_checks

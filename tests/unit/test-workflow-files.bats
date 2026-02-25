@@ -14,10 +14,6 @@ load '../helpers/test-helpers'
     [[ -f "${ASKO_ROOT}/workflows/n8n/url-summarizer.json" ]]
 }
 
-@test "reminder-bot workflow exists" {
-    [[ -f "${ASKO_ROOT}/workflows/n8n/reminder-bot.json" ]]
-}
-
 @test "all workflow files are valid JSON" {
     for wf in "${ASKO_ROOT}"/workflows/n8n/*.json; do
         [[ -f "$wf" ]] || continue

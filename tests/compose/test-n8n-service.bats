@@ -52,9 +52,10 @@ elif isinstance(env, list):
     echo "$config" | grep -q "asko-n8n"
 }
 
-@test "waha service is defined in docker-compose.yml" {
+@test "waha service is defined in docker-compose.yml (whatsapp profile)" {
     cd "${ASKO_ROOT}"
-    config=$(docker compose config)
+    # WAHA uses profiles: ["whatsapp"], so it only appears with --profile
+    config=$(docker compose --profile whatsapp config)
     echo "$config" | grep -q "asko-waha"
 }
 
@@ -158,8 +159,8 @@ assert 'test' in hc, f'n8n has no healthcheck: {hc}'
 " 2>/dev/null || skip "python3 yaml not available"
 }
 
-@test "waha has security hardening" {
+@test "waha has security hardening (whatsapp profile)" {
     cd "${ASKO_ROOT}"
-    config=$(docker compose config)
+    config=$(docker compose --profile whatsapp config)
     echo "$config" | grep -A 30 "asko-waha" | grep -q "no-new-privileges"
 }

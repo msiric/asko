@@ -1,3 +1,0 @@
-requirepass ${REDIS_PASSWORD}
-maxmemory 200mb
-maxmemory-policy allkeys-lru

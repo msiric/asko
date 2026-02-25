@@ -86,7 +86,7 @@ teardown() {
     grep -q "^LITELLM_MASTER_KEY=" "$test_env"
     grep -q "^N8N_ENCRYPTION_KEY=" "$test_env"
     grep -q "^OPENWEBUI_SECRET_KEY=" "$test_env"
-    grep -q "^REDIS_PASSWORD=" "$test_env"
+    # Redis removed (YAGNI — no service used it)
 
     rm -f "$test_env"
 }
@@ -105,7 +105,6 @@ teardown() {
         N8N_USER_MANAGEMENT_JWT_SECRET
         N8N_BASIC_AUTH_PASSWORD
         OPENWEBUI_SECRET_KEY
-        REDIS_PASSWORD
     )
 
     for var in "${required_secrets[@]}"; do

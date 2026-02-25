@@ -61,9 +61,10 @@ asko_automation — n8n, LiteLLM, PostgreSQL, Redis
 ```
 
 Key isolation guarantees:
-- **IronClaw cannot reach PostgreSQL or Ollama** (only LiteLLM via asko_agents)
+- **IronClaw can reach PostgreSQL** (needed for memory/embeddings via asko_backend) but **cannot reach n8n or WAHA**
 - **n8n cannot reach Ollama or IronClaw** (only LiteLLM and PostgreSQL via asko_automation)
 - **Ollama is never on the proxy network** (no direct browser-to-inference path)
+- **WAHA is isolated** on the automation network only (optional, starts only with `--profile whatsapp`)
 - **Only Caddy exposes host ports** (80/443)
 
 ### Tailscale

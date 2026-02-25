@@ -1,6 +1,12 @@
 # asko — Security-first self-hosted AI assistant stack
 # https://github.com/msiric/asko
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   # === DATA LAYER ===
 
@@ -17,6 +23,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    command: ["postgres", "-c", "shared_buffers=512MB", "-c", "work_mem=16MB", "-c", "max_connections=200"]
     deploy:
       resources:
         limits:
@@ -29,6 +36,7 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
+    logging: *default-logging
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -40,36 +48,6 @@ services:
       - FOWNER
       - DAC_READ_SEARCH
     shm_size: '256m'
-    restart: unless-stopped
-
-  redis:
-    image: redis:7.4-alpine
-    container_name: asko-redis
-    networks:
-      - asko_backend
-      - asko_automation
-    volumes:
-      - asko_redis_data:/data
-      - ./config/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-        reservations:
-          memory: 64M
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$$(cat /usr/local/etc/redis/redis.conf | grep requirepass | awk '{print $$2}')\" ping 2>/dev/null | grep -q PONG"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    read_only: true
-    tmpfs:
-      - /tmp:size=32M
     restart: unless-stopped
 
   # === INFERENCE LAYER ===
@@ -93,6 +71,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    logging: *default-logging
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -100,7 +79,7 @@ services:
     restart: unless-stopped
 
   litellm:
-    image: ghcr.io/berriai/litellm:main-stable
+    image: ghcr.io/berriai/litellm:main-v1.63.2
     container_name: asko-litellm
     networks:
       - asko_proxy
@@ -132,6 +111,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+    logging: *default-logging
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -141,7 +121,7 @@ services:
   # === AGENT LAYER ===
 
   ironclaw:
-    image: ghcr.io/nearai/ironclaw:latest
+    image: ghcr.io/nearai/ironclaw:v0.11.1
     container_name: asko-ironclaw
     networks:
       - asko_proxy
@@ -171,11 +151,12 @@ services:
         reservations:
           memory: 256M
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/health > /dev/null || curl -sf http://localhost:3000/ > /dev/null"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/health > /dev/null"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
+    logging: *default-logging
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -185,7 +166,7 @@ services:
   # === UI LAYER ===
 
   open-webui:
-    image: ghcr.io/open-webui/open-webui:main
+    image: ghcr.io/open-webui/open-webui:v0.6.6
     container_name: asko-openwebui
     networks:
       - asko_proxy
@@ -217,6 +198,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    logging: *default-logging
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -267,6 +249,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    logging: *default-logging
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -276,6 +259,7 @@ services:
   waha:
     image: devlikeapro/waha:2024.12
     container_name: asko-waha
+    profiles: ["whatsapp"]
     networks:
       - asko_automation
     volumes:
@@ -295,6 +279,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    logging: *default-logging
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -325,11 +310,12 @@ services:
         reservations:
           memory: 64M
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/ || exit 0"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+    logging: *default-logging
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -357,7 +343,6 @@ networks:
 
 volumes:
   asko_postgres_data:
-  asko_redis_data:
   asko_ollama_models:
   asko_litellm_data:
   asko_ironclaw_data:

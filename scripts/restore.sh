@@ -19,7 +19,7 @@ fi
 echo "=== asko Restore ==="
 echo -e "${YELLOW}Restoring from: ${BACKUP_DIR}${NC}"
 echo ""
-read -rp "This will overwrite current data. Are you sure? (y/N) " confirm
+read -rp "This will stop services and overwrite current data. Are you sure? (y/N) " confirm
 if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
     echo "Aborted."
     exit 0
@@ -27,11 +27,12 @@ fi
 
 cd "$ASKO_ROOT"
 
-# Restore .env
+# Restore .env first (needed for credentials)
 if [[ -f "${BACKUP_DIR}/.env" ]]; then
     echo -e "${YELLOW}Restoring .env...${NC}"
     cp "${BACKUP_DIR}/.env" "${ASKO_ROOT}/.env"
     chmod 600 "${ASKO_ROOT}/.env"
+    load_env
 fi
 
 # Restore configs
@@ -40,17 +41,28 @@ if [[ -d "${BACKUP_DIR}/config" ]]; then
     cp -r "${BACKUP_DIR}/config/"* "${ASKO_ROOT}/config/" 2>/dev/null || true
 fi
 
-# Restore databases
+# Stop application services before database restore (postgres stays running)
+echo -e "${YELLOW}Stopping application services...${NC}"
+docker compose stop ironclaw open-webui n8n litellm caddy 2>/dev/null || true
+
+# Restore databases (drop and recreate to avoid conflicts)
 echo -e "${YELLOW}Restoring databases...${NC}"
 for dump in "${BACKUP_DIR}"/*.sql.gz; do
     [[ -f "$dump" ]] || continue
     db=$(basename "$dump" .sql.gz)
     echo -n "  ${db}... "
+
+    # Drop and recreate the database, then restore
+    docker compose exec -T postgres dropdb -U "${POSTGRES_USER:-asko}" --if-exists "$db" 2>/dev/null
+    docker compose exec -T postgres createdb -U "${POSTGRES_USER:-asko}" "$db" 2>/dev/null
     gunzip -c "$dump" | docker compose exec -T postgres psql -U "${POSTGRES_USER:-asko}" "$db" > /dev/null 2>&1 \
         && echo -e "${GREEN}OK${NC}" \
         || echo -e "${RED}FAIL${NC}"
 done
 
+# Restart all services
+echo -e "${YELLOW}Restarting services...${NC}"
+docker compose up -d
+
 echo ""
 echo -e "${GREEN}Restore complete.${NC}"
-echo "Restart services: docker compose restart"

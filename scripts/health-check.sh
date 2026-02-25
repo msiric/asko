@@ -23,11 +23,10 @@ echo ""
 cd "$ASKO_ROOT"
 
 check "PostgreSQL" docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-asko}"
-check "Redis" docker compose exec -T redis redis-cli -a "${REDIS_PASSWORD:-}" ping
 check "Ollama" docker compose exec -T ollama curl -sf http://localhost:11434/api/tags
 check "LiteLLM" docker compose exec -T litellm curl -sf http://localhost:4000/health
-check "Open WebUI" docker compose exec -T open-webui curl -sf http://localhost:8080/
 check "IronClaw" docker compose exec -T ironclaw curl -sf http://localhost:3000/api/health
+check "Open WebUI" docker compose exec -T open-webui curl -sf http://localhost:8080/
 check "n8n" docker compose exec -T n8n curl -sf http://localhost:5678/healthz
 check "Caddy" curl -sf -o /dev/null http://localhost:80/
 

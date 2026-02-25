@@ -18,10 +18,17 @@ cd "$ASKO_ROOT"
 # Dump each PostgreSQL database
 echo -e "${YELLOW}Dumping databases...${NC}"
 for db in asko asko_ironclaw asko_n8n asko_openwebui asko_litellm; do
+    dump_file="${BACKUP_DIR}/${db}.sql.gz"
     docker compose exec -T postgres pg_dump -U "${POSTGRES_USER:-asko}" "$db" 2>/dev/null \
-        | gzip > "${BACKUP_DIR}/${db}.sql.gz" \
-        && echo "  ${db}: OK" \
-        || echo "  ${db}: SKIP (may not exist yet)"
+        | gzip > "$dump_file"
+
+    # Verify dump is not empty (indicates a failed or partial dump)
+    if [[ -s "$dump_file" ]] && [[ "$(stat -f%z "$dump_file" 2>/dev/null || stat -c%s "$dump_file" 2>/dev/null)" -gt 100 ]]; then
+        echo "  ${db}: OK"
+    else
+        echo "  ${db}: SKIP (empty dump — database may not exist yet)"
+        rm -f "$dump_file"
+    fi
 done
 
 # Copy config and .env
