@@ -56,6 +56,7 @@ bats tests/templates/                                     # Template rendering
 - LinguaCafe is behind `profiles: ["linguacafe"]` with its own isolated network `asko_linguacafe`
 - SearXNG is always-on, on `asko_backend` — provides web search to Open WebUI and n8n
 - All services talk to LLMs through LiteLLM at `http://litellm:4000/v1`, never directly to Ollama
+- `setup.sh` runs `post_setup()` after stack starts: creates admin accounts (Open WebUI + n8n), imports n8n workflows, sets up backup cron — all idempotent
 
 ## Do NOT
 

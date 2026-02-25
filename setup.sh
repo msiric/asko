@@ -224,6 +224,10 @@ SEARXNG_SECRET=$(generate_secret 32)
 # --- LinguaCafe ---
 LINGUACAFE_DB_PASSWORD=$(generate_secret 32)
 
+# --- Admin (auto-generated — used for Open WebUI and n8n) ---
+ADMIN_EMAIL=admin@${DOMAIN_BASE:-asko.local}
+ADMIN_PASSWORD=$(generate_secret 24)
+
 # --- Cloud LLM API Keys ---
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
 OPENAI_API_KEY=${OPENAI_API_KEY:-}
@@ -315,29 +319,102 @@ pull_default_model() {
 }
 
 # ============================================================
+# Post-Setup Automation
+# ============================================================
+
+post_setup() {
+    info "Running post-setup automation..."
+
+    # Load generated env vars
+    set -a
+    source "${SCRIPT_DIR}/.env"
+    set +a
+
+    # --- Open WebUI: create admin account ---
+    info "Creating Open WebUI admin account..."
+    local webui_response
+    webui_response=$(docker compose exec -T open-webui \
+        curl -sf -X POST http://localhost:8080/api/v1/auths/signup \
+        -H "Content-Type: application/json" \
+        -d "{\"email\":\"${ADMIN_EMAIL}\",\"password\":\"${ADMIN_PASSWORD}\",\"name\":\"Admin\"}" \
+        2>/dev/null) && info "  Open WebUI admin created" \
+        || warn "  Open WebUI admin already exists or signup failed (configure manually)"
+
+    # --- n8n: create owner account ---
+    info "Creating n8n owner account..."
+    docker compose exec -T n8n \
+        curl -sf -X POST http://localhost:5678/rest/owner/setup \
+        -u "${N8N_BASIC_AUTH_USER}:${N8N_BASIC_AUTH_PASSWORD}" \
+        -H "Content-Type: application/json" \
+        -d "{\"email\":\"${ADMIN_EMAIL}\",\"firstName\":\"Admin\",\"lastName\":\"Asko\",\"password\":\"${ADMIN_PASSWORD}\"}" \
+        > /dev/null 2>&1 && info "  n8n owner created" \
+        || warn "  n8n owner already exists or setup failed (configure manually at n8n.${DOMAIN_BASE})"
+
+    # --- n8n: import workflows ---
+    info "Importing n8n workflows..."
+    local imported=0
+    for workflow in "${SCRIPT_DIR}/workflows/n8n/"*.json; do
+        [[ -f "$workflow" ]] || continue
+        local name
+        name=$(basename "$workflow" .json)
+        if docker compose exec -T n8n n8n import:workflow --input=/dev/stdin < "$workflow" > /dev/null 2>&1; then
+            imported=$((imported + 1))
+        fi
+    done
+    info "  ${imported} workflows imported (activate in n8n UI after configuring credentials)"
+
+    # --- Backup crontab ---
+    info "Setting up daily backup cron (3:00 AM)..."
+    local backup_cmd="${SCRIPT_DIR}/scripts/backup.sh"
+    local cron_entry="0 3 * * * ${backup_cmd} >> /var/log/asko-backup.log 2>&1"
+    if crontab -l 2>/dev/null | grep -qF "$backup_cmd"; then
+        info "  Backup cron already configured"
+    else
+        (crontab -l 2>/dev/null; echo "$cron_entry") | crontab -
+        info "  Backup cron added"
+    fi
+
+    info "Post-setup complete"
+}
+
+# ============================================================
 # Summary
 # ============================================================
 
 print_summary() {
     local domain_base="${DOMAIN_BASE:-asko.local}"
+
+    # Load env for admin credentials
+    local admin_email admin_password
+    admin_email=$(grep "^ADMIN_EMAIL=" "${SCRIPT_DIR}/.env" 2>/dev/null | cut -d'=' -f2-)
+    admin_password=$(grep "^ADMIN_PASSWORD=" "${SCRIPT_DIR}/.env" 2>/dev/null | cut -d'=' -f2-)
+
     echo ""
     echo -e "${GREEN}${BOLD}=== asko is running! ===${NC}"
     echo ""
-    echo -e "  ${BOLD}Chat UI:${NC}     http://chat.${domain_base}"
-    echo -e "  ${BOLD}LiteLLM:${NC}     http://ai.${domain_base}"
-    echo -e "  ${BOLD}n8n:${NC}         http://n8n.${domain_base}"
-    echo -e "  ${BOLD}IronClaw:${NC}    http://agent.${domain_base}"
+    echo -e "  ${BOLD}Admin credentials${NC} (same for Open WebUI and n8n):"
+    echo -e "    Email:    ${admin_email:-admin@${domain_base}}"
+    echo -e "    Password: ${admin_password:-see .env file}"
     echo ""
-    echo -e "  ${BOLD}Next steps:${NC}"
-    echo "  1. Add DNS entries for *.${domain_base} pointing to this machine"
-    echo "     Or access directly via http://localhost:80"
-    echo "  2. Open the Chat UI and create your admin account"
-    echo "  3. Start chatting with your local AI!"
+    echo -e "  ${BOLD}Ready to use:${NC}"
+    echo "    Chat UI:   http://chat.${domain_base}  (admin account created)"
+    echo "    n8n:       http://n8n.${domain_base}   (admin account created, workflows imported)"
+    echo "    LiteLLM:   http://ai.${domain_base}"
+    echo "    IronClaw:  http://agent.${domain_base}"
     echo ""
-    echo -e "  ${BOLD}Useful commands:${NC}"
-    echo "  docker compose ps          # Check service status"
-    echo "  docker compose logs -f     # Follow all logs"
-    echo "  ./scripts/health-check.sh  # Run health checks"
+    echo "    Backups:   Scheduled daily at 3:00 AM"
+    echo ""
+    echo -e "  ${BOLD}Needs manual setup:${NC}"
+    echo "    1. Add DNS entries for *.${domain_base} pointing to this machine"
+    echo "       Or access directly via http://localhost:80"
+    echo "    2. Telegram bot: message @BotFather → /newbot → add token"
+    echo "       in n8n credentials, then activate workflows"
+    echo "    3. (Optional) Cloudflare Tunnel for n8n Telegram webhooks:"
+    echo "       cloudflared tunnel --url http://localhost:5678"
+    echo "    4. (Optional) Amadeus API key for flight price monitoring:"
+    echo "       Register at https://developers.amadeus.com"
+    echo ""
+    echo -e "  ${BOLD}Commands:${NC}  make help"
     echo ""
 }
 
@@ -395,6 +472,7 @@ main() {
     render_templates
     start_stack
     pull_default_model
+    post_setup
     print_summary
 }
 
