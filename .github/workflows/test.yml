@@ -1,0 +1,59 @@
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Lint shell scripts
+        run: |
+          shellcheck setup.sh scripts/*.sh tests/run-all.sh
+
+      - name: Validate YAML files
+        run: |
+          python3 -c "import yaml; yaml.safe_load(open('config/litellm/config.yaml.template'))"
+
+      - name: Validate docker-compose.yml
+        run: |
+          # Create a dummy .env for validation
+          cp .env.example .env
+          docker compose config --quiet
+
+  unit-tests:
+    name: Unit & Template Tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install BATS
+        run: |
+          sudo apt-get install -y bats
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Create dummy .env for compose validation
+        run: cp .env.example .env
+
+      - name: Run unit tests
+        run: bats tests/unit/
+
+      - name: Run template tests
+        run: bats tests/templates/
+
+      - name: Run compose validation tests
+        run: bats tests/compose/
+
+      - name: Run security file tests
+        run: bats tests/security/test-file-permissions.bats

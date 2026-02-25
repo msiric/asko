@@ -9,36 +9,50 @@ asko packages a complete AI assistant stack into a single `docker compose` deplo
 ## Quick Start
 
 ```bash
-git clone https://github.com/mariosiric/asko.git
+git clone https://github.com/msiric/asko.git
 cd asko
 ./setup.sh
 ```
 
+The setup wizard detects your hardware, generates secure credentials, pulls Docker images, and starts the stack.
+
 ## Architecture
 
 ```
-Family (Split)  <->  Tailscale VPN  <->  Beelink (Prague)  <->  Girlfriend (Prague)
-
-+-- asko_proxy ----------------------------------------+
-|  Caddy (:80/:443) -> Open WebUI, n8n, IronClaw, LiteLLM  |
-+------------------------------------------------------+
-+-- asko_backend --------------------------------------+
-|  LiteLLM -> Ollama, PostgreSQL (pgvector), Redis     |
-+------------------------------------------------------+
-+-- asko_agents ---------------------------------------+
-|  IronClaw -> LiteLLM                                 |
-+------------------------------------------------------+
-+-- asko_automation -----------------------------------+
-|  n8n -> LiteLLM, PostgreSQL, Redis                   |
-+------------------------------------------------------+
+                    ┌─────────────────────────────────────┐
+                    │         Tailscale VPN                │
+                    └──────────────┬──────────────────────┘
+                                   │
+                    ┌──────────────┴──────────────────────┐
+                    │  Caddy (:80/:443)   [asko_proxy]    │
+                    └──┬────────┬────────┬────────┬───────┘
+                       │        │        │        │
+               ┌───────┴─┐ ┌───┴────┐ ┌─┴──────┐ ┌┴───────┐
+               │Open WebUI│ │IronClaw│ │  n8n   │ │LiteLLM │
+               │  (chat)  │ │(agent) │ │(flows) │ │(router)│
+               └────┬─────┘ └───┬────┘ └───┬────┘ └┬──┬───┘
+                    │            │          │       │  │
+            [asko_backend] [asko_agents]  [asko_automation]
+                    │            │          │       │  │
+               ┌────┴────┐      │     ┌────┴───┐   │  │
+               │ Ollama   │◄─────┘     │Postgres│◄──┘  │
+               │ (LLMs)   │           │(pgvec) │      │
+               └──────────┘           └────────┘      │
+                                      ┌────────┐      │
+                                      │ Redis  │◄─────┘
+                                      └────────┘
 ```
+
+4 isolated Docker networks enforce least-privilege communication. Only Caddy exposes host ports. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for details.
 
 ## Hardware Requirements
 
-- **CPU**: x86_64, 4+ cores (8+ recommended)
-- **RAM**: 16GB minimum, 32GB recommended
-- **Disk**: 50GB+ free (models take 5-20GB each)
-- **OS**: Ubuntu Server 24.04
+| | Minimum | Recommended |
+|---|---------|-------------|
+| **CPU** | x86_64, 4 cores | 8+ cores |
+| **RAM** | 16 GB | 32 GB |
+| **Disk** | 50 GB free | 100 GB+ |
+| **OS** | Ubuntu Server 24.04 | Ubuntu Server 24.04 |
 
 ## Services
 
@@ -49,7 +63,8 @@ Family (Split)  <->  Tailscale VPN  <->  Beelink (Prague)  <->  Girlfriend (Prag
 | **Open WebUI** | Browser-based chat (multi-user) |
 | **IronClaw** | WASM-sandboxed AI agent (Telegram, Signal) |
 | **n8n** | Workflow automation + WhatsApp bridge |
-| **PostgreSQL** | Database (with pgvector for embeddings) |
+| **WAHA** | WhatsApp Web API bridge |
+| **PostgreSQL** | Database with pgvector for embeddings |
 | **Redis** | Session cache |
 | **Caddy** | Reverse proxy |
 
@@ -57,13 +72,68 @@ Family (Split)  <->  Tailscale VPN  <->  Beelink (Prague)  <->  Girlfriend (Prag
 
 - Zero ports exposed to the internet — Tailscale-only access
 - WASM sandbox for all AI agent tool execution (IronClaw)
-- Docker hardening: `cap_drop: ALL`, `no-new-privileges`, resource limits
+- Docker hardening: `cap_drop: ALL`, `no-new-privileges`, resource limits on every container
 - 4 isolated Docker networks (least-privilege communication)
 - Auto-generated secrets, `.env` chmod 600
-- n8n hardened: community packages disabled, public API disabled
+- n8n hardened: community packages disabled, public API disabled, env access blocked
 
 See [docs/SECURITY.md](docs/SECURITY.md) for the full security model.
 
+## Models
+
+asko defaults to local-first inference with cloud fallback:
+
+| Model | Type | Speed (CPU) |
+|-------|------|-------------|
+| phi3:3.8b | Local (default) | ~10-15 tok/s |
+| llama3.1:8b | Local (large) | ~5-8 tok/s |
+| Claude Sonnet/Opus | Cloud fallback | Fast (API) |
+| GPT-4o Mini | Cloud fallback | Fast (API) |
+
+Cloud models require API keys in `.env`. See [docs/MODELS.md](docs/MODELS.md).
+
+## Remote Access
+
+All access is via [Tailscale](https://tailscale.com) (WireGuard VPN). See [docs/TAILSCALE.md](docs/TAILSCALE.md) for setup.
+
+## Adding Family Members
+
+See [docs/FAMILY-ACCESS.md](docs/FAMILY-ACCESS.md) for onboarding family to Open WebUI, Telegram, and WhatsApp.
+
+## Maintenance
+
+```bash
+./scripts/health-check.sh    # Check all services
+./scripts/backup.sh          # Backup databases + configs
+./scripts/update.sh          # Backup, pull updates, rolling restart
+./scripts/restore.sh <dir>   # Restore from backup
+./scripts/pull-models.sh     # Download Ollama models
+./scripts/import-workflows.sh # Import n8n workflow templates
+```
+
+## Testing
+
+```bash
+# Run all tests
+./tests/run-all.sh
+
+# Run specific category
+./tests/run-all.sh unit
+./tests/run-all.sh templates
+./tests/run-all.sh compose
+./tests/run-all.sh security
+```
+
+Requires [BATS](https://github.com/bats-core/bats-core).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Troubleshooting
+
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+
 ## License
 
-MIT
+[MIT](LICENSE)
