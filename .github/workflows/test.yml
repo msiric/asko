@@ -42,6 +42,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  security-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy on docker-compose.yml
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          scan-ref: 'docker-compose.yml'
+          severity: 'CRITICAL,HIGH'
+
   unit-tests:
     name: Unit & Template Tests
     runs-on: ubuntu-24.04
@@ -57,14 +70,5 @@ jobs:
       - name: Create dummy .env for compose validation
         run: cp .env.example .env
 
-      - name: Run unit tests
-        run: bats tests/unit/
-
-      - name: Run template tests
-        run: bats tests/templates/
-
-      - name: Run compose validation tests
-        run: bats tests/compose/
-
-      - name: Run security file tests
-        run: bats tests/security/test-file-permissions.bats
+      - name: Run tests
+        run: make test

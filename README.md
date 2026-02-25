@@ -103,28 +103,24 @@ See [docs/FAMILY-ACCESS.md](docs/FAMILY-ACCESS.md) for onboarding family to Open
 ## Maintenance
 
 ```bash
-./scripts/health-check.sh    # Check all services
-./scripts/backup.sh          # Backup databases + configs
-./scripts/update.sh          # Backup, pull updates, rolling restart
-./scripts/restore.sh <dir>   # Restore from backup
-./scripts/pull-models.sh     # Download Ollama models
-./scripts/import-workflows.sh # Import n8n workflow templates
+make health            # Check all services
+make backup            # Backup databases + configs
+make update            # Backup, pull updates, rolling restart
+make restore DIR=...   # Restore from backup
+make pull-models       # Download Ollama models
+make logs              # Follow all service logs
 ```
 
 ## Testing
 
 ```bash
-# Run all tests
-./tests/run-all.sh
-
-# Run specific category
-./tests/run-all.sh unit
-./tests/run-all.sh templates
-./tests/run-all.sh compose
-./tests/run-all.sh security
+make test              # Run all tests
+make test-unit         # Unit tests only
+make test-compose      # Compose validation
+make lint-all          # Run all linters
 ```
 
-Requires [BATS](https://github.com/bats-core/bats-core).
+Requires [BATS](https://github.com/bats-core/bats-core) and GNU Make. Run `make help` for all commands.
 
 ## Contributing
 
