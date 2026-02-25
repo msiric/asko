@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ASKO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m'
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+load_env
 
 passed=0
 failed=0
@@ -29,22 +22,13 @@ echo ""
 
 cd "$ASKO_ROOT"
 
-# PostgreSQL
-check "PostgreSQL" docker compose exec -T postgres pg_isready -U asko
-
-# Redis
+check "PostgreSQL" docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-asko}"
 check "Redis" docker compose exec -T redis redis-cli -a "${REDIS_PASSWORD:-}" ping
-
-# Ollama
 check "Ollama" docker compose exec -T ollama curl -sf http://localhost:11434/api/tags
-
-# LiteLLM
 check "LiteLLM" docker compose exec -T litellm curl -sf http://localhost:4000/health
-
-# Open WebUI
 check "Open WebUI" docker compose exec -T open-webui curl -sf http://localhost:8080/
-
-# Caddy
+check "IronClaw" docker compose exec -T ironclaw curl -sf http://localhost:3000/api/health
+check "n8n" docker compose exec -T n8n curl -sf http://localhost:5678/healthz
 check "Caddy" curl -sf -o /dev/null http://localhost:80/
 
 echo ""

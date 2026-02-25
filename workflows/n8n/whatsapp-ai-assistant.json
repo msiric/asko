@@ -11,7 +11,10 @@
       "name": "WhatsApp Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [250, 300]
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
@@ -37,13 +40,10 @@
       "name": "AI Agent",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
-      "position": [500, 300],
-      "credentials": {
-        "openAiApi": {
-          "id": "litellm",
-          "name": "LiteLLM"
-        }
-      }
+      "position": [
+        500,
+        300
+      ]
     },
     {
       "parameters": {
@@ -54,18 +54,33 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [750, 300]
+      "position": [
+        750,
+        300
+      ]
     }
   ],
   "connections": {
     "WhatsApp Webhook": {
       "main": [
-        [{ "node": "AI Agent", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "AI Agent": {
       "main": [
-        [{ "node": "Respond", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
@@ -73,6 +88,8 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "description": "WhatsApp AI assistant bridge. Receives messages via webhook from WAHA, processes with LiteLLM, and responds."
+    "description": "WhatsApp AI assistant bridge. Receives messages via webhook from WAHA, processes with LiteLLM, and responds.",
+    "instanceId": "",
+    "templateCredsSetupCompleted": false
   }
 }

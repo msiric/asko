@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ASKO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+load_env
 
 if [[ $# -lt 1 ]]; then
     echo "Usage: $0 <backup-directory>"
@@ -53,7 +46,7 @@ for dump in "${BACKUP_DIR}"/*.sql.gz; do
     [[ -f "$dump" ]] || continue
     db=$(basename "$dump" .sql.gz)
     echo -n "  ${db}... "
-    gunzip -c "$dump" | docker compose exec -T postgres psql -U asko "$db" > /dev/null 2>&1 \
+    gunzip -c "$dump" | docker compose exec -T postgres psql -U "${POSTGRES_USER:-asko}" "$db" > /dev/null 2>&1 \
         && echo -e "${GREEN}OK${NC}" \
         || echo -e "${RED}FAIL${NC}"
 done

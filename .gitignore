@@ -5,6 +5,7 @@
 config/litellm/config.yaml
 config/caddy/Caddyfile
 config/ironclaw/config.toml
+config/redis/redis.conf
 
 # Version lockfile (generated at deploy time)
 .versions

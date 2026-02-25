@@ -7,6 +7,7 @@ chat.${DOMAIN_BASE} {
     reverse_proxy open-webui:8080
 }
 
+# Admin-only services — restrict via Tailscale ACLs
 n8n.${DOMAIN_BASE} {
     reverse_proxy n8n:5678
 }

@@ -11,7 +11,10 @@
       "name": "Reminder Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [250, 300]
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
@@ -37,13 +40,10 @@
       "name": "Parse Reminder",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
-      "position": [500, 300],
-      "credentials": {
-        "openAiApi": {
-          "id": "litellm",
-          "name": "LiteLLM"
-        }
-      }
+      "position": [
+        500,
+        300
+      ]
     },
     {
       "parameters": {
@@ -54,18 +54,33 @@
       "name": "Confirm",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [750, 300]
+      "position": [
+        750,
+        300
+      ]
     }
   ],
   "connections": {
     "Reminder Webhook": {
       "main": [
-        [{ "node": "Parse Reminder", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Parse Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Parse Reminder": {
       "main": [
-        [{ "node": "Confirm", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Confirm",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
@@ -73,6 +88,8 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "description": "Natural language reminder bot. Send 'Remind me to buy milk in 1 hour' and it parses the intent and schedules a notification."
+    "description": "Natural language reminder bot. Send 'Remind me to buy milk in 1 hour' and it parses the intent and schedules a notification.",
+    "instanceId": "",
+    "templateCredsSetupCompleted": false
   }
 }

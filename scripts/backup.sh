@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ASKO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-
-# Colors
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+load_env
 
 BACKUP_DIR="${ASKO_ROOT}/backups/$(date +%Y%m%d_%H%M%S)"
 
@@ -25,7 +18,7 @@ cd "$ASKO_ROOT"
 # Dump each PostgreSQL database
 echo -e "${YELLOW}Dumping databases...${NC}"
 for db in asko asko_ironclaw asko_n8n asko_openwebui asko_litellm; do
-    docker compose exec -T postgres pg_dump -U asko "$db" 2>/dev/null \
+    docker compose exec -T postgres pg_dump -U "${POSTGRES_USER:-asko}" "$db" 2>/dev/null \
         | gzip > "${BACKUP_DIR}/${db}.sql.gz" \
         && echo "  ${db}: OK" \
         || echo "  ${db}: SKIP (may not exist yet)"
@@ -39,11 +32,11 @@ cp -r "${ASKO_ROOT}/config/" "${BACKUP_DIR}/config/" 2>/dev/null || true
 # Record current image versions
 docker compose images --format json > "${BACKUP_DIR}/images.json" 2>/dev/null || true
 
-# Export n8n workflows
+# Export n8n workflows (pipe to host since container can't write to host paths)
 echo -e "${YELLOW}Exporting n8n workflows...${NC}"
 mkdir -p "${BACKUP_DIR}/n8n-workflows"
-docker compose exec -T n8n n8n export:workflow --all \
-    --output="${BACKUP_DIR}/n8n-workflows/" 2>/dev/null \
+docker compose exec -T n8n n8n export:workflow --all --output=/dev/stdout 2>/dev/null \
+    > "${BACKUP_DIR}/n8n-workflows/all-workflows.json" \
     || echo "  n8n export: SKIP (n8n may not be running)"
 
 echo ""

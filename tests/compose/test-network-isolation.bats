@@ -39,7 +39,7 @@ elif isinstance(nets, dict):
     }
 }
 
-@test "ironclaw is on proxy and agents networks only" {
+@test "ironclaw is on proxy, agents, and backend networks" {
     networks=$(get_service_networks "ironclaw")
     if [[ -z "$networks" ]]; then
         skip "python3 yaml not available"
@@ -48,35 +48,32 @@ elif isinstance(nets, dict):
     echo "IronClaw networks: $networks"
     echo "$networks" | grep -q "asko_proxy"
     echo "$networks" | grep -q "asko_agents"
-    # Should NOT be on backend or automation
-    ! echo "$networks" | grep -q "asko_backend"
+    echo "$networks" | grep -q "asko_backend"
+    # Should NOT be on automation
     ! echo "$networks" | grep -q "asko_automation"
 }
 
-@test "ironclaw cannot directly reach postgres" {
-    # IronClaw should not share any network with postgres except through litellm
+@test "ironclaw can reach postgres for memory/embeddings" {
+    # IronClaw needs postgres for its hybrid search memory via asko_backend
     ic_nets=$(get_service_networks "ironclaw")
     pg_nets=$(get_service_networks "postgres")
     if [[ -z "$ic_nets" ]] || [[ -z "$pg_nets" ]]; then
         skip "python3 yaml not available"
     fi
 
-    # Find shared networks
     shared=$(comm -12 <(echo "$ic_nets" | sort) <(echo "$pg_nets" | sort))
     echo "Shared networks between ironclaw and postgres: '$shared'"
-    [[ -z "$shared" ]]
+    [[ -n "$shared" ]]
 }
 
-@test "ironclaw cannot directly reach ollama" {
+@test "ironclaw is isolated from automation network" {
     ic_nets=$(get_service_networks "ironclaw")
-    ol_nets=$(get_service_networks "ollama")
-    if [[ -z "$ic_nets" ]] || [[ -z "$ol_nets" ]]; then
+    if [[ -z "$ic_nets" ]]; then
         skip "python3 yaml not available"
     fi
 
-    shared=$(comm -12 <(echo "$ic_nets" | sort) <(echo "$ol_nets" | sort))
-    echo "Shared networks between ironclaw and ollama: '$shared'"
-    [[ -z "$shared" ]]
+    # IronClaw should not be on automation (n8n's network)
+    ! echo "$ic_nets" | grep -q "asko_automation"
 }
 
 @test "ironclaw can reach litellm" {

@@ -11,7 +11,10 @@
       "name": "URL Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [250, 300]
+      "position": [
+        250,
+        300
+      ]
     },
     {
       "parameters": {
@@ -24,7 +27,10 @@
       "name": "Fetch URL",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [450, 300]
+      "position": [
+        450,
+        300
+      ]
     },
     {
       "parameters": {
@@ -50,13 +56,10 @@
       "name": "AI Summarize",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1,
-      "position": [650, 300],
-      "credentials": {
-        "openAiApi": {
-          "id": "litellm",
-          "name": "LiteLLM"
-        }
-      }
+      "position": [
+        650,
+        300
+      ]
     },
     {
       "parameters": {
@@ -67,23 +70,44 @@
       "name": "Respond",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [850, 300]
+      "position": [
+        850,
+        300
+      ]
     }
   ],
   "connections": {
     "URL Webhook": {
       "main": [
-        [{ "node": "Fetch URL", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Fetch URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Fetch URL": {
       "main": [
-        [{ "node": "AI Summarize", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "AI Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "AI Summarize": {
       "main": [
-        [{ "node": "Respond", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
@@ -91,6 +115,8 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "description": "Send a URL via POST, get an AI-generated summary back. Useful for quickly digesting articles and web pages."
+    "description": "Send a URL via POST, get an AI-generated summary back. Useful for quickly digesting articles and web pages.",
+    "instanceId": "",
+    "templateCredsSetupCompleted": false
   }
 }

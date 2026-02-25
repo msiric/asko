@@ -142,16 +142,19 @@ ask_config() {
     read -rp "Domain base [asko.local]: " DOMAIN_BASE
     DOMAIN_BASE="${DOMAIN_BASE:-asko.local}"
 
-    # Anthropic API key
-    read -rp "Anthropic API key (optional, press Enter to skip): " ANTHROPIC_API_KEY
+    # Anthropic API key (silent input to prevent shoulder-surfing)
+    read -rsp "Anthropic API key (optional, press Enter to skip): " ANTHROPIC_API_KEY
+    echo ""
     ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-}"
 
     # OpenAI API key
-    read -rp "OpenAI API key (optional, press Enter to skip): " OPENAI_API_KEY
+    read -rsp "OpenAI API key (optional, press Enter to skip): " OPENAI_API_KEY
+    echo ""
     OPENAI_API_KEY="${OPENAI_API_KEY:-}"
 
     # Telegram bot token
-    read -rp "Telegram Bot Token (optional, press Enter to skip): " IRONCLAW_TELEGRAM_BOT_TOKEN
+    read -rsp "Telegram Bot Token (optional, press Enter to skip): " IRONCLAW_TELEGRAM_BOT_TOKEN
+    echo ""
     IRONCLAW_TELEGRAM_BOT_TOKEN="${IRONCLAW_TELEGRAM_BOT_TOKEN:-}"
 
     echo ""
@@ -166,6 +169,8 @@ generate_env() {
     local env_file="${1:-${SCRIPT_DIR}/.env}"
     info "Generating ${env_file}..."
 
+    # generate_secret uses [a-zA-Z0-9] only — safe for embedding in DATABASE_URL
+    # without URL-encoding. Do NOT change the charset without updating URL construction.
     local pg_pass
     pg_pass=$(generate_secret 64)
 
@@ -191,10 +196,6 @@ LITELLM_SALT_KEY=$(generate_secret 32)
 
 # --- IronClaw ---
 IRONCLAW_SECRETS_MASTER_KEY=$(generate_hex_secret 64)
-IRONCLAW_LLM_BACKEND=openai_compatible
-IRONCLAW_LLM_BASE_URL=http://litellm:4000/v1
-IRONCLAW_LLM_API_KEY=sk-asko-$(generate_secret 48)
-IRONCLAW_LLM_MODEL=local-default
 IRONCLAW_TELEGRAM_BOT_TOKEN=${IRONCLAW_TELEGRAM_BOT_TOKEN:-}
 IRONCLAW_TELEGRAM_WEBHOOK_SECRET=$(generate_secret 32)
 
@@ -231,11 +232,12 @@ render_templates() {
     source "$env_file"
     set +a
 
-    # Render each template
+    # LiteLLM config uses its own "os.environ/VAR" syntax for secrets,
+    # so we copy it verbatim rather than running envsubst on it.
     if [[ -f "${SCRIPT_DIR}/config/litellm/config.yaml.template" ]]; then
         cp "${SCRIPT_DIR}/config/litellm/config.yaml.template" \
            "${SCRIPT_DIR}/config/litellm/config.yaml"
-        info "  config/litellm/config.yaml"
+        info "  config/litellm/config.yaml (verbatim — uses LiteLLM env refs)"
     fi
 
     if [[ -f "${SCRIPT_DIR}/config/caddy/Caddyfile.template" ]]; then
@@ -248,6 +250,12 @@ render_templates() {
         envsubst < "${SCRIPT_DIR}/config/ironclaw/config.toml.template" \
             > "${SCRIPT_DIR}/config/ironclaw/config.toml"
         info "  config/ironclaw/config.toml"
+    fi
+
+    if [[ -f "${SCRIPT_DIR}/config/redis/redis.conf.template" ]]; then
+        envsubst < "${SCRIPT_DIR}/config/redis/redis.conf.template" \
+            > "${SCRIPT_DIR}/config/redis/redis.conf"
+        info "  config/redis/redis.conf"
     fi
 
     info "Templates rendered"
@@ -335,6 +343,17 @@ main() {
     echo ""
     echo "Security-first, self-hosted AI assistant stack"
     echo ""
+
+    # Idempotency: warn if .env already exists
+    if [[ -f "${SCRIPT_DIR}/.env" ]]; then
+        warn ".env already exists. Running setup again will regenerate all secrets"
+        warn "and break running services."
+        read -rp "Continue? (y/N) " confirm
+        if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+            echo "Aborted. Use 'docker compose up -d' to start existing configuration."
+            exit 0
+        fi
+    fi
 
     preflight_checks
     ask_config
