@@ -1,0 +1,13 @@
+# ShellCheck configuration for asko
+# https://www.shellcheck.net/wiki/
+
+# Allow sourcing from dynamic paths (common.sh pattern)
+# SC1090: Can't follow non-constant source
+# SC1091: Not following sourced file (not input)
+disable=SC1090,SC1091
+
+# We intentionally use echo -e for color output
+# SC2059: Don't use variables in the printf format string (we use echo -e, not printf)
+
+# Default shell dialect
+shell=bash

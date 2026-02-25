@@ -1,0 +1,9 @@
+# Default owner for everything
+* @msiric
+
+# Security-sensitive files require explicit review
+docker-compose.yml @msiric
+setup.sh @msiric
+config/ @msiric
+scripts/ @msiric
+.github/workflows/ @msiric
