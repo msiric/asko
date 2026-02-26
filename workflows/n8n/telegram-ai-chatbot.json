@@ -1,0 +1,169 @@
+{
+  "name": "Telegram AI Chatbot (Polling)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 5 Seconds",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $credentials.telegramApi.botToken }}/getUpdates",
+        "options": {
+          "timeout": 10000
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "offset",
+              "value": "={{ $('Store Offset').item.json.offset || '' }}"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "telegramApi"
+      },
+      "id": "get-updates",
+      "name": "Get Telegram Updates",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": ""
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.result.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "has-message",
+      "name": "Has New Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Extract message and update offset\nconst results = $input.item.json.result;\nif (results && results.length > 0) {\n  const update = results[0];\n  const message = update.message;\n  return {\n    json: {\n      update_id: update.update_id,\n      offset: update.update_id + 1,\n      chat_id: message.chat.id,\n      text: message.text || '',\n      from_name: message.from.first_name || 'User'\n    }\n  };\n}\nreturn { json: {} };"
+      },
+      "id": "extract-message",
+      "name": "Extract Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "key": "offset",
+        "value": "={{ $json.offset }}"
+      },
+      "id": "store-offset",
+      "name": "Store Offset",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://litellm:4000/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"local-default\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are asko, a helpful personal AI assistant. Be concise and friendly. Respond in the same language as the user's message.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": {{ JSON.stringify($json.text) }}\n    }\n  ],\n  \"max_tokens\": 1024\n}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "ai-response",
+      "name": "AI Response (LiteLLM)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "chatId": "={{ $('Extract Message').item.json.chat_id }}",
+        "text": "={{ $json.choices[0].message.content }}"
+      },
+      "id": "send-reply",
+      "name": "Send Telegram Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1250, 200],
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": ""
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 5 Seconds": {
+      "main": [[{"node": "Get Telegram Updates", "type": "main", "index": 0}]]
+    },
+    "Get Telegram Updates": {
+      "main": [[{"node": "Has New Message?", "type": "main", "index": 0}]]
+    },
+    "Has New Message?": {
+      "main": [
+        [{"node": "Extract Message", "type": "main", "index": 0}],
+        []
+      ]
+    },
+    "Extract Message": {
+      "main": [[{"node": "Store Offset", "type": "main", "index": 0}, {"node": "AI Response (LiteLLM)", "type": "main", "index": 0}]]
+    },
+    "AI Response (LiteLLM)": {
+      "main": [[{"node": "Send Telegram Reply", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "Telegram AI chatbot using polling (no HTTPS required). Polls getUpdates every 5 seconds, sends messages to local LLM via LiteLLM, replies via Telegram. Configure: 1) Telegram Bot credential, 2) HTTP Header Auth credential with LiteLLM master key.",
+    "instanceId": "",
+    "templateCredsSetupCompleted": false
+  }
+}
