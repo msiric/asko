@@ -3,19 +3,19 @@
     admin off
 }
 
-chat.${DOMAIN_BASE} {
+:80 {
+    reverse_proxy open-webui:8080
+}
+
+http://chat.${DOMAIN_BASE} {
     reverse_proxy open-webui:8080
 }
 
 # Admin-only services — restrict via Tailscale ACLs
-n8n.${DOMAIN_BASE} {
+http://n8n.${DOMAIN_BASE} {
     reverse_proxy n8n:5678
 }
 
-ai.${DOMAIN_BASE} {
+http://ai.${DOMAIN_BASE} {
     reverse_proxy litellm:4000
-}
-
-agent.${DOMAIN_BASE} {
-    reverse_proxy ironclaw:3000
 }
