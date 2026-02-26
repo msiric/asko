@@ -232,6 +232,7 @@ services:
       N8N_DIAGNOSTICS_ENABLED: "false"
       N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
       WEBHOOK_URL: http://n8n:5678/
+      N8N_SECURE_COOKIE: "false"
     depends_on:
       postgres:
         condition: service_healthy
@@ -267,6 +268,7 @@ services:
     environment:
       WHATSAPP_DEFAULT_ENGINE: WEBJS
       WAHA_PRINT_QR: "true"
+      WHATSAPP_API_KEY: ""
     deploy:
       resources:
         limits:
