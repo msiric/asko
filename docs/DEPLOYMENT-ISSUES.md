@@ -109,7 +109,42 @@ Issues encountered during the first real deployment on a Beelink SER5 MAX (Ryzen
 **Fix applied**: Added `cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE]` to linguacafe-db service.
 **Remaining work**: None — fixed. Add to security docs that database services need these capabilities.
 
-### 19. SearXNG Query URL not auto-populated in Open WebUI admin
+### 19. n8n secure cookie blocks HTTP access
+**Symptom**: n8n shows "Your n8n server is configured to use a secure cookie, however you are either visiting this via an insecure URL."
+**Root cause**: n8n defaults to secure cookies (HTTPS only). Our setup uses plain HTTP behind Tailscale.
+**Fix applied**: Added `N8N_SECURE_COOKIE: "false"` env var.
+**Remaining work**: None — fixed. Document that HTTPS via Caddy/Tailscale would eliminate the need for this.
+
+### 20. LinguaCafe can't reach NLP service — wrong hostname
+**Symptom**: Language loading fails with "cURL error 6: Could not resolve host: linguacafe-python-service".
+**Root cause**: We named the service `linguacafe-nlp` but LinguaCafe expects the hostname `linguacafe-python-service` (matching the official compose).
+**Fix applied**: Renamed service to `linguacafe-python-service`.
+**Remaining work**: None — fixed.
+
+### 21. LinguaCafe NLP service needs correct volume and PYTHONPATH
+**Symptom**: Even after hostname fix, NLP models weren't accessible.
+**Root cause**: Volume was mounted at wrong subpath, missing PYTHONPATH env var.
+**Fix applied**: Mount full storage volume, add PYTHONPATH="/var/www/html/storage/app/model".
+**Remaining work**: None — fixed.
+
+### 22. LinguaCafe Redis needs SETUID/SETGID capabilities
+**Symptom**: `linguacafe-redis` crashes with "failed switching to redis: operation not permitted".
+**Root cause**: Same as issue #18 — cap_drop: ALL blocks user switching.
+**Fix applied**: Added `cap_add: [SETUID, SETGID]`.
+**Remaining work**: None — fixed.
+
+### 23. WAHA dashboard is a paid (Plus) feature
+**Symptom**: WAHA dashboard at `/dashboard` returns 401 regardless of credentials.
+**Root cause**: The free/community WAHA image doesn't include the dashboard UI. Only API access is available.
+**Fix needed**: Document that WhatsApp pairing uses the API (`/api/default/auth/qr`), not a web dashboard. Add a helper script for QR pairing.
+
+### 24. WAHA API requires non-empty API key
+**Symptom**: All WAHA API calls return 401 even with `WHATSAPP_API_KEY=""`.
+**Root cause**: Newer WAHA versions require a non-empty API key. Empty string doesn't disable auth.
+**Fix applied**: Set `WHATSAPP_API_KEY: "asko"`. API calls use `-H 'X-Api-Key: asko'`.
+**Remaining work**: Generate a proper random key in setup.sh and store in .env.
+
+### 25. SearXNG Query URL not auto-populated in Open WebUI admin
 **Symptom**: Even with `SEARXNG_QUERY_URL` env var set, the admin UI shows no URL. User must manually enter `http://searxng:8080/search?q=<query>`.
 **Root cause**: Same as #14 — UI settings may override env vars after first boot.
 **Fix needed**: Same as #14 — use API to configure, or document clearly.
