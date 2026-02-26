@@ -103,7 +103,13 @@ Issues encountered during the first real deployment on a Beelink SER5 MAX (Ryzen
 **Fix applied**: Added `ports: ["5678:5678"]` manually on the Beelink.
 **Remaining work**: Add port mapping to docker-compose.yml in the repo, or document that n8n requires DNS/hosts file setup for Caddy routing.
 
-### 17. SearXNG Query URL not auto-populated in Open WebUI admin
+### 18. MySQL (LinguaCafe) fails with `setgid: Operation not permitted`
+**Symptom**: `asko-linguacafe-db` container crashes on startup with `setgid: Operation not permitted`.
+**Root cause**: `cap_drop: ALL` removes SETGID capability which MySQL 8.0 requires. Our hardened default strips all capabilities, but MySQL needs CHOWN, SETUID, SETGID, and DAC_OVERRIDE (same as PostgreSQL).
+**Fix applied**: Added `cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE]` to linguacafe-db service.
+**Remaining work**: None — fixed. Add to security docs that database services need these capabilities.
+
+### 19. SearXNG Query URL not auto-populated in Open WebUI admin
 **Symptom**: Even with `SEARXNG_QUERY_URL` env var set, the admin UI shows no URL. User must manually enter `http://searxng:8080/search?q=<query>`.
 **Root cause**: Same as #14 — UI settings may override env vars after first boot.
 **Fix needed**: Same as #14 — use API to configure, or document clearly.
