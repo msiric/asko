@@ -253,7 +253,7 @@ services:
     restart: unless-stopped
 
   waha:
-    image: devlikeapro/waha:2024.12
+    image: devlikeapro/waha:latest
     container_name: asko-waha
     profiles: ["whatsapp"]
     networks:

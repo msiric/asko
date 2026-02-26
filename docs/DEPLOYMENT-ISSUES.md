@@ -86,6 +86,28 @@ Issues encountered during the first real deployment on a Beelink SER5 MAX (Ryzen
 **Root cause**: Ubuntu Server 24.04 minimal install ships with NetworkManager but it's not configured for any interfaces.
 **Fix needed**: Document the WiFi/network setup steps prominently. Consider adding a `scripts/setup-network.sh` helper.
 
+### 14. Open WebUI Web Search Engine defaults to `ollama_cloud`, not `searxng`
+**Symptom**: Web search toggle exists in admin settings but is set to `ollama_cloud` by default. Users get hallucinated responses instead of actual search results.
+**Root cause**: The `RAG_WEB_SEARCH_ENGINE=searxng` env var is set in compose but Open WebUI v0.8.5 may not respect it on first run, defaulting to `ollama_cloud` in the admin UI. The user must manually go to Admin → Settings → Web Search and change the dropdown to `searxng` and enter the query URL.
+**Fix needed**: Investigate whether Open WebUI respects the env var on fresh install or if the admin UI setting takes precedence. If UI overrides env, the post-setup automation should configure this via the Open WebUI API after admin creation.
+
+### 15. WAHA image tag `2024.12` doesn't exist
+**Symptom**: `docker compose --profile whatsapp up -d` fails with "not found" for `devlikeapro/waha:2024.12`.
+**Root cause**: Same as issue #1 — tag was chosen during development without verification. Actual latest is `2026.2.2`.
+**Fix applied**: Updated to `devlikeapro/waha:2026.2.2`.
+**Remaining work**: Same as #1 — add image tag verification to CI.
+
+### 16. n8n has no port mapping in docker-compose.yml
+**Symptom**: n8n is running but inaccessible from the browser. Only reachable via docker network.
+**Root cause**: n8n was only on `asko_proxy` and `asko_automation` networks with no host port mapping. The Caddy reverse proxy routes by hostname (`n8n.asko.local`) which requires DNS setup.
+**Fix applied**: Added `ports: ["5678:5678"]` manually on the Beelink.
+**Remaining work**: Add port mapping to docker-compose.yml in the repo, or document that n8n requires DNS/hosts file setup for Caddy routing.
+
+### 17. SearXNG Query URL not auto-populated in Open WebUI admin
+**Symptom**: Even with `SEARXNG_QUERY_URL` env var set, the admin UI shows no URL. User must manually enter `http://searxng:8080/search?q=<query>`.
+**Root cause**: Same as #14 — UI settings may override env vars after first boot.
+**Fix needed**: Same as #14 — use API to configure, or document clearly.
+
 ## Summary: Priority Fixes Before Public Release
 
 1. **Verify all image tags exist** — add CI check or `make verify-images`
