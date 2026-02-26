@@ -206,6 +206,8 @@ services:
   n8n:
     image: n8nio/n8n:1.76.1
     container_name: asko-n8n
+    ports:
+      - "5678:5678"
     networks:
       - asko_proxy
       - asko_automation
