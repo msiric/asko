@@ -85,7 +85,7 @@ services:
   # === INFERENCE LAYER ===
 
   ollama:
-    image: ollama/ollama:0.6
+    image: ollama/ollama:0.17.1
     container_name: asko-ollama
     networks:
       - asko_backend
@@ -111,7 +111,7 @@ services:
     restart: unless-stopped
 
   litellm:
-    image: ghcr.io/berriai/litellm:main-v1.63.2
+    image: ghcr.io/berriai/litellm:main-v1.81.12-stable
     container_name: asko-litellm
     networks:
       - asko_proxy
@@ -151,54 +151,14 @@ services:
     restart: unless-stopped
 
   # === AGENT LAYER ===
-
-  ironclaw:
-    image: ghcr.io/nearai/ironclaw:v0.11.1
-    container_name: asko-ironclaw
-    networks:
-      - asko_proxy
-      - asko_agents
-      - asko_backend
-    volumes:
-      - asko_ironclaw_data:/home/ironclaw/.ironclaw
-      - ./config/ironclaw/config.toml:/home/ironclaw/.ironclaw/config.toml:ro
-    environment:
-      DATABASE_URL: ${IRONCLAW_DATABASE_URL}
-      LLM_BACKEND: openai_compatible
-      LLM_BASE_URL: http://litellm:4000/v1
-      LLM_API_KEY: ${LITELLM_MASTER_KEY}
-      LLM_MODEL: local-default
-      SECRETS_MASTER_KEY: ${IRONCLAW_SECRETS_MASTER_KEY}
-      GATEWAY_ENABLED: "true"
-      RUST_LOG: "ironclaw=info"
-    depends_on:
-      litellm:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 1G
-        reservations:
-          memory: 256M
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/health > /dev/null"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    logging: *default-logging
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    restart: unless-stopped
+  # NOTE: IronClaw does not publish official Docker images.
+  # Install it on the host instead: curl -fsSL https://ironclaw.sh | sh
+  # Then run: ironclaw onboard
 
   # === UI LAYER ===
 
   open-webui:
-    image: ghcr.io/open-webui/open-webui:v0.6.6
+    image: ghcr.io/open-webui/open-webui:v0.8.5
     container_name: asko-openwebui
     networks:
       - asko_proxy
@@ -482,7 +442,6 @@ volumes:
   asko_postgres_data:
   asko_ollama_models:
   asko_litellm_data:
-  asko_ironclaw_data:
   asko_n8n_data:
   asko_waha_data:
   asko_openwebui_data:
