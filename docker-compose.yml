@@ -89,6 +89,8 @@ services:
   ollama:
     image: ollama/ollama:0.17.1
     container_name: asko-ollama
+    ports:
+      - "127.0.0.1:11434:11434"
     networks:
       - asko_backend
     volumes:
