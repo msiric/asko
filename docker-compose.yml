@@ -269,6 +269,9 @@ services:
       WHATSAPP_DEFAULT_ENGINE: WEBJS
       WAHA_PRINT_QR: "true"
       WHATSAPP_API_KEY: ""
+      WAHA_DASHBOARD_ENABLED: "true"
+      WAHA_DASHBOARD_USERNAME: "admin"
+      WAHA_DASHBOARD_PASSWORD: "admin"
     deploy:
       resources:
         limits:
@@ -382,8 +385,10 @@ services:
     networks:
       - asko_linguacafe
     command: python3 tokenizer.py
+    environment:
+      PYTHONPATH: "/var/www/html/storage/app/model"
     volumes:
-      - asko_linguacafe_storage:/var/www/html/storage/app/model
+      - asko_linguacafe_storage:/var/www/html/storage
     deploy:
       resources:
         limits:
