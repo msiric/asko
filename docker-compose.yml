@@ -378,9 +378,9 @@ services:
     read_only: true
     restart: unless-stopped
 
-  linguacafe-nlp:
+  linguacafe-python-service:
     image: ghcr.io/simjanos-dev/linguacafe-python-service:v0.14.1
-    container_name: asko-linguacafe-nlp
+    container_name: asko-linguacafe-python-service
     profiles: ["linguacafe"]
     networks:
       - asko_linguacafe
