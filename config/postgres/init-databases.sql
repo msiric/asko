@@ -5,7 +5,6 @@
 CREATE DATABASE asko_ironclaw;
 CREATE DATABASE asko_n8n;
 CREATE DATABASE asko_openwebui;
-CREATE DATABASE asko_litellm;
 
 \c asko
 CREATE EXTENSION IF NOT EXISTS vector;

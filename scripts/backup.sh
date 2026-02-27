@@ -17,7 +17,7 @@ cd "$ASKO_ROOT"
 
 # Dump each PostgreSQL database
 echo -e "${YELLOW}Dumping databases...${NC}"
-for db in asko asko_ironclaw asko_n8n asko_openwebui asko_litellm; do
+for db in asko asko_ironclaw asko_n8n asko_openwebui; do
     dump_file="${BACKUP_DIR}/${db}.sql.gz"
     docker compose exec -T postgres pg_dump -U "${POSTGRES_USER:-asko}" "$db" 2>/dev/null \
         | gzip > "$dump_file"

@@ -228,10 +228,6 @@ ADMIN_PASSWORD=$(generate_secret 24)
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
 OPENAI_API_KEY=${OPENAI_API_KEY:-}
 
-# --- Amadeus Flight API ---
-AMADEUS_API_KEY=
-AMADEUS_API_SECRET=
-
 # --- Domain ---
 DOMAIN_BASE=${DOMAIN_BASE:-asko.local}
 EOF
