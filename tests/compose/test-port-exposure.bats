@@ -35,7 +35,7 @@ for name, svc in config.get('services', {}).items():
     done <<< "$services_with_public_ports"
 }
 
-@test "caddy only exposes ports 80 and 443" {
+@test "caddy only exposes port 80" {
     cd "${ASKO_ROOT}"
 
     exposed_ports=$(python3 -c "
@@ -44,7 +44,6 @@ with open('${ASKO_ROOT}/docker-compose.yml') as f:
     config = yaml.safe_load(f)
 caddy = config.get('services', {}).get('caddy', {})
 for port in caddy.get('ports', []):
-    # port can be string '80:80' or dict
     if isinstance(port, str):
         host_port = port.split(':')[0]
     elif isinstance(port, dict):
@@ -59,8 +58,6 @@ for port in caddy.get('ports', []):
     fi
 
     echo "Exposed ports: $exposed_ports"
-    # Should only contain 80 and 443
-    [[ $(echo "$exposed_ports" | wc -l) -le 2 ]]
+    [[ $(echo "$exposed_ports" | wc -l) -eq 1 ]]
     echo "$exposed_ports" | grep -q "80"
-    echo "$exposed_ports" | grep -q "443"
 }
