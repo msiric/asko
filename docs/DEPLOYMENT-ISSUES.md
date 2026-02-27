@@ -149,11 +149,81 @@ Issues encountered during the first real deployment on a Beelink SER5 MAX (Ryzen
 **Root cause**: Same as #14 — UI settings may override env vars after first boot.
 **Fix needed**: Same as #14 — use API to configure, or document clearly.
 
+### 26. WAHA image tag `2026.2.2` also doesn't exist
+**Symptom**: After fixing tag from `2024.12`, `2026.2.2` also fails to pull.
+**Root cause**: WAHA's Docker Hub tags don't follow the release version numbers directly.
+**Fix applied**: Changed to `devlikeapro/waha:latest`. WAHA is internal-only, behind a profile.
+**Remaining work**: Same as #1 — image tag verification.
+
+### 27. IronClaw onboard wizard can't save settings to PostgreSQL
+**Symptom**: Wizard completes all 9 steps then fails with "Error: Database error: Failed to save settings to database".
+**Root cause**: Database schema/migrations not fully applied, or permissions issue on first run.
+**Fix applied**: Used `ironclaw config --no-onboard set` CLI commands to save settings individually. Also granted full PG permissions with `GRANT ALL ON SCHEMA public TO asko`.
+**Remaining work**: Document the workaround. Consider filing IronClaw bug report.
+
+### 28. IronClaw won't run as systemd service — exits immediately
+**Symptom**: `ironclaw --no-onboard` starts, shows "Agent asko ready and listening", then immediately "Shutdown command received, exiting..."
+**Root cause**: Without a TTY (terminal), IronClaw's REPL channel detects no stdin and triggers shutdown. Setting `REPL_ENABLED=false` doesn't prevent this.
+**Fix applied**: Must run in an interactive SSH session or tmux. Systemd service doesn't work.
+**Remaining work**: File IronClaw bug report. Create a tmux-based systemd wrapper. Or wait for IronClaw to add a `--daemon` flag.
+
+### 29. IronClaw Telegram token stored as `{TELEGRAM_BOT_TOKEN}` placeholder
+**Symptom**: Telegram API calls use literal `bot{TELEGRAM_BOT_TOKEN}` in URLs, returning 404.
+**Root cause**: WASM Telegram channel reads the token from IronClaw's encrypted secrets store, not from environment variables. The onboard wizard (issue #27) failed to save the token.
+**Fix applied**: Re-ran `ironclaw onboard --channels-only` which successfully saved the token to the database.
+**Remaining work**: Document that channel tokens MUST be stored via `ironclaw onboard --channels-only`, not env vars alone.
+
+### 30. IronClaw Ollama backend ignores model config
+**Symptom**: IronClaw banner shows `model: llama3 via ollama` despite config being set to `qwen2.5:7b`.
+**Root cause**: The Ollama backend has a hardcoded default (`llama3`) and the config keys `llm_model`, `selected_model`, `ollama_model` are all different. Only `OLLAMA_MODEL` env var + `export` before running works reliably.
+**Fix applied**: Must explicitly `export OLLAMA_MODEL=qwen2.5:7b` before running `ironclaw --no-onboard`.
+**Remaining work**: Document this requirement. The config cascade (env > database > defaults) doesn't work properly for the Ollama backend.
+
+### 31. Qwen3 thinking mode makes responses 9+ minutes
+**Symptom**: `qwen3:4b` takes 9 minutes to respond to "Say hello" via Ollama.
+**Root cause**: Qwen3 models have a "thinking mode" that generates hundreds of internal reasoning tokens before the actual response. The `thinking` field in the response contains chain-of-thought text. `/no_think` in system prompt and Modelfile don't reliably disable it.
+**Fix applied**: Switched to `qwen2.5:7b` (no thinking mode).
+**Remaining work**: Document that Qwen3 models should NOT be used for CPU inference with agents. Only use Qwen2.5 or non-thinking models.
+
+### 32. IronClaw 24 built-in tools cause 60-150s response times on CPU
+**Symptom**: Even with the fastest non-thinking model (qwen2.5:3b, 2s for simple chat), IronClaw responses take 60-150 seconds via Telegram.
+**Root cause**: IronClaw sends all 24 built-in tool schemas (~2000+ prompt tokens) with every LLM request. On CPU at ~37 tok/s prompt processing, that's 55+ seconds just for prompt evaluation. Plus retries on failed tool calls.
+**Fix needed**: Use a cloud API (Anthropic/OpenAI) for IronClaw's agent reasoning. Keep local models for Open WebUI chat only. This is what production OpenClaw deployments do.
+
+### 33. Docker services don't expose ports to host by default
+**Symptom**: IronClaw (running on host) can't reach LiteLLM or PostgreSQL inside Docker.
+**Root cause**: No port mappings in docker-compose.yml for internal services. Caddy was the only service with host ports.
+**Fix applied**: Added `127.0.0.1:5432:5432` for PostgreSQL, `127.0.0.1:4000:4000` for LiteLLM, `127.0.0.1:11434:11434` for Ollama. All bound to localhost only.
+**Remaining work**: Already committed to repo.
+
+### 34. Tailscale Funnel doesn't survive reboots
+**Symptom**: After reboot, `tailscale funnel` is not running. IronClaw Telegram webhooks stop working.
+**Fix needed**: Create a systemd service for Tailscale Funnel, or use `tailscale funnel --bg` in a startup script.
+
+### 35. Mini PC thermal shutdown under sustained load
+**Symptom**: Beelink powers off during heavy inference. Happened twice during deployment.
+**Root cause**: Ryzen 7 6800U in a small form factor case gets hot under sustained CPU load (model loading + inference + all Docker services).
+**Fix needed**: Monitor thermals. Consider reducing simultaneous service count. Stop LinguaCafe when not in use. Possibly add external cooling.
+
 ## Summary: Priority Fixes Before Public Release
 
-1. **Verify all image tags exist** — add CI check or `make verify-images`
-2. **Fix Open WebUI first-admin flow** — enable signup initially, disable after creation
-3. **Add retry/resume to setup.sh** — don't force full reset on partial failure
-4. **Resolve IronClaw architecture** — host install or custom Dockerfile
-5. **Update LiteLLM config** for v1.81+ schema
-6. **Add hardware/network setup guide** for common mini PCs
+### Critical (blocks users)
+1. **Verify all image tags exist** — add CI check or `make verify-images` (#1, #15, #26)
+2. **Fix Open WebUI first-admin flow** — enable signup initially, disable after creation (#8)
+3. **Add retry/resume to setup.sh** — don't force full reset on partial failure (#10)
+4. **Fix IronClaw architecture docs** — host install, not Docker; document onboard workarounds (#2, #27, #28, #29, #30)
+5. **Document cloud API requirement for IronClaw** — local models too slow with 24 tools on CPU (#32)
+6. **Update LiteLLM config** for v1.81+ schema (#11)
+
+### High (significant friction)
+7. **Add hardware/network setup guide** — WiFi, keyboard layout, thermal management (#9, #12, #13, #35)
+8. **Fix SearXNG auto-configuration** — env vars don't populate admin UI (#14, #25)
+9. **Add IronClaw systemd service with tmux** — survives reboots (#28, #34)
+10. **Generate proper WAHA API key in setup.sh** (#24)
+
+### Medium (quality of life)
+11. **Add port mappings for all services** — n8n, LiteLLM, PostgreSQL, Ollama for host access (#16, #33)
+12. **Document WAHA API-only access** — no dashboard in free version (#23)
+13. **Document database capability requirements** — MySQL and Redis need SETUID/SETGID (#18, #22)
+14. **Update all tests** — many broken by architecture changes (IronClaw removal, new ports, etc.)
+15. **Update ARCHITECTURE.md, SECURITY.md, README** — reflect IronClaw on host, actual image tags, real network topology
