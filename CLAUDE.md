@@ -2,7 +2,7 @@
 
 ## What is asko?
 
-A security-first, self-hosted AI assistant stack deployed via Docker Compose. One command (`./setup.sh`) provisions 8 services: Ollama (local LLMs), LiteLLM (model router), Open WebUI (chat UI), IronClaw (WASM-sandboxed agent), n8n (workflow automation), WAHA (WhatsApp bridge), PostgreSQL (with pgvector), and Caddy (reverse proxy).
+A security-first, self-hosted AI assistant stack deployed via Docker Compose. One command (`./setup.sh`) provisions 7 Docker services: Ollama (local LLMs), LiteLLM (model router), Open WebUI (chat UI), n8n (workflow automation), SearXNG (private search), PostgreSQL (with pgvector), and Caddy (reverse proxy). Optional profiles add WAHA (WhatsApp bridge) and LinguaCafe (language learning). IronClaw (WASM-sandboxed agent) is installed separately on the host.
 
 ## Project Structure
 

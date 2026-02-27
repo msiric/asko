@@ -2,27 +2,11 @@ model_list:
   # === LOCAL MODELS (Ollama, free, private) ===
   - model_name: "local-default"
     litellm_params:
-      model: "ollama/qwen3:4b"
+      model: "ollama/qwen2.5:7b"
       api_base: "http://ollama:11434"
       stream: true
     model_info:
-      description: "Qwen3 4B - fast, multilingual (119 langs), best quality/speed ratio"
-
-  - model_name: "local-large"
-    litellm_params:
-      model: "ollama/qwen3:8b"
-      api_base: "http://ollama:11434"
-      stream: true
-    model_info:
-      description: "Qwen3 8B - more capable, slower on CPU"
-
-  - model_name: "local-fast"
-    litellm_params:
-      model: "ollama/llama3.2:3b"
-      api_base: "http://ollama:11434"
-      stream: true
-    model_info:
-      description: "Llama 3.2 3B - fastest responses, English-focused"
+      description: "Qwen2.5 7B - primary local model, fast on CPU, no thinking mode"
 
   - model_name: "local-embed"
     litellm_params:
@@ -60,11 +44,10 @@ model_list:
 
 router_settings:
   fallbacks:
-    - local-default: ["local-large", "cloud-fast", "cloud-smart"]
-    - local-large: ["cloud-smart"]
+    - local-default: ["cloud-fast", "cloud-smart"]
     - local-embed: ["cloud-embed"]
   context_window_fallbacks:
-    - local-default: ["local-large", "cloud-smart"]
+    - local-default: ["cloud-smart"]
   num_retries: 2
   allowed_fails: 3
   cooldown_time: 60

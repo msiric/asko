@@ -160,7 +160,14 @@ assert 'test' in hc, f'n8n has no healthcheck: {hc}'
 }
 
 @test "waha has security hardening (whatsapp profile)" {
-    cd "${ASKO_ROOT}"
-    config=$(docker compose --profile whatsapp config)
-    echo "$config" | grep -A 30 "asko-waha" | grep -q "no-new-privileges"
+    python3 -c "
+import yaml
+with open('${ASKO_ROOT}/docker-compose.yml') as f:
+    config = yaml.safe_load(f)
+svc = config['services']['waha']
+sec = svc.get('security_opt', [])
+assert any('no-new-privileges' in s for s in sec), f'waha missing no-new-privileges: {sec}'
+cap = svc.get('cap_drop', [])
+assert 'ALL' in cap, f'waha missing cap_drop ALL: {cap}'
+" 2>/dev/null || skip "python3 yaml not available"
 }

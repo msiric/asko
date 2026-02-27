@@ -199,15 +199,11 @@ POSTGRES_DB=asko
 
 # --- Database URLs ---
 DATABASE_URL=postgresql://asko:${pg_pass}@postgres:5432/asko
-IRONCLAW_DATABASE_URL=postgresql://asko:${pg_pass}@postgres:5432/asko_ironclaw
 OPENWEBUI_DATABASE_URL=postgresql://asko:${pg_pass}@postgres:5432/asko_openwebui
 
 # --- LiteLLM ---
 LITELLM_MASTER_KEY=sk-asko-$(generate_secret 48)
 LITELLM_SALT_KEY=$(generate_secret 32)
-
-# --- IronClaw ---
-IRONCLAW_SECRETS_MASTER_KEY=$(generate_hex_secret 64)
 
 # --- n8n ---
 N8N_ENCRYPTION_KEY=$(generate_secret 32)
@@ -267,12 +263,6 @@ render_templates() {
         info "  config/caddy/Caddyfile"
     fi
 
-    if [[ -f "${SCRIPT_DIR}/config/ironclaw/config.toml.template" ]]; then
-        envsubst < "${SCRIPT_DIR}/config/ironclaw/config.toml.template" \
-            > "${SCRIPT_DIR}/config/ironclaw/config.toml"
-        info "  config/ironclaw/config.toml"
-    fi
-
     info "Templates rendered"
 }
 
@@ -313,9 +303,13 @@ start_stack() {
 }
 
 pull_default_model() {
-    info "Pulling default Ollama model (phi3:3.8b)..."
-    docker compose exec -T ollama ollama pull phi3:3.8b || \
-        warn "Failed to pull phi3:3.8b. You can pull models later with: docker compose exec ollama ollama pull <model>"
+    info "Pulling default Ollama model (qwen2.5:7b)..."
+    docker compose exec -T ollama ollama pull qwen2.5:7b || \
+        warn "Failed to pull qwen2.5:7b. You can pull models later with: docker compose exec ollama ollama pull <model>"
+
+    info "Pulling embeddings model (nomic-embed-text)..."
+    docker compose exec -T ollama ollama pull nomic-embed-text || \
+        warn "Failed to pull nomic-embed-text."
 }
 
 # ============================================================
@@ -329,6 +323,21 @@ post_setup() {
     set -a
     source "${SCRIPT_DIR}/.env"
     set +a
+
+    # --- Wait for Open WebUI API to be ready ---
+    info "Waiting for Open WebUI API..."
+    local webui_ready=false
+    for _ in $(seq 1 30); do
+        if docker compose exec -T open-webui \
+            curl -sf http://localhost:8080/api/v1/auths/signup -X OPTIONS > /dev/null 2>&1; then
+            webui_ready=true
+            break
+        fi
+        sleep 2
+    done
+    if [[ "$webui_ready" != "true" ]]; then
+        warn "Open WebUI API not responding after 60s. Admin creation may fail."
+    fi
 
     # --- Open WebUI: create admin account ---
     info "Creating Open WebUI admin account..."
@@ -415,7 +424,6 @@ print_summary() {
     echo "    Chat UI:   http://chat.${domain_base}  (admin account created)"
     echo "    n8n:       http://n8n.${domain_base}   (admin account created, workflows imported)"
     echo "    LiteLLM:   http://ai.${domain_base}"
-    echo "    IronClaw:  http://agent.${domain_base}"
     echo ""
     echo "    Backups:   Scheduled daily at 3:00 AM"
     echo ""
@@ -451,7 +459,7 @@ main() {
     if [[ -f "${SCRIPT_DIR}/.env" ]]; then
         info "Existing installation detected (.env found)"
         echo ""
-        echo "  1) Start services with existing config"
+        echo "  1) Continue with existing config (re-renders templates, starts services, pulls models)"
         echo "  2) Reset everything (WARNING: regenerates all secrets, breaks running services)"
         echo "  3) Abort"
         echo ""
@@ -460,9 +468,12 @@ main() {
 
         case "$choice" in
             1)
-                info "Starting with existing configuration..."
+                info "Continuing with existing configuration..."
                 cd "$SCRIPT_DIR"
-                docker compose up -d
+                render_templates
+                start_stack
+                pull_default_model
+                post_setup
                 print_summary
                 return 0
                 ;;

@@ -4,7 +4,6 @@
 # Generated configs (created by setup.sh from .template files)
 config/litellm/config.yaml
 config/caddy/Caddyfile
-config/ironclaw/config.toml
 
 # Version lockfile (generated at deploy time)
 .versions

@@ -2,30 +2,37 @@
 
 load '../helpers/test-helpers'
 
-@test "only caddy exposes ports to the host" {
+@test "only caddy and n8n expose public ports" {
     cd "${ASKO_ROOT}"
 
-    # Parse docker-compose.yml for port mappings
-    # Lines with "ports:" followed by host:container mappings
-    # Only the caddy service should have them
-
-    # Get all always-on services (no profiles) that have ports: sections
-    services_with_ports=$(python3 -c "
+    # Get always-on services (no profiles) that expose ports to all interfaces
+    # Ports bound to 127.0.0.1 are host-local only, not public
+    services_with_public_ports=$(python3 -c "
 import yaml
 with open('${ASKO_ROOT}/docker-compose.yml') as f:
     config = yaml.safe_load(f)
 for name, svc in config.get('services', {}).items():
-    if 'ports' in svc and not svc.get('profiles'):
-        print(name)
+    if svc.get('profiles'):
+        continue
+    for port in svc.get('ports', []):
+        p = str(port)
+        if not p.startswith('127.0.0.1:'):
+            print(name)
+            break
 " 2>/dev/null || echo "PARSE_ERROR")
 
-    if [[ "$services_with_ports" == "PARSE_ERROR" ]]; then
+    if [[ "$services_with_public_ports" == "PARSE_ERROR" ]]; then
         skip "python3 yaml module not available"
     fi
 
-    # Only caddy should appear
-    echo "Services with ports: $services_with_ports"
-    [[ "$services_with_ports" == "caddy" ]]
+    echo "Services with public ports: $services_with_public_ports"
+    while IFS= read -r svc; do
+        [[ -z "$svc" ]] && continue
+        [[ "$svc" == "caddy" ]] || [[ "$svc" == "n8n" ]] || {
+            echo "FAIL: $svc should not expose public ports"
+            false
+        }
+    done <<< "$services_with_public_ports"
 }
 
 @test "caddy only exposes ports 80 and 443" {

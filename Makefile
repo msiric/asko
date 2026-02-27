@@ -44,13 +44,10 @@ lint: ## Run ShellCheck on all scripts
 lint-yaml: ## Validate YAML configs
 	python3 -c "import yaml; yaml.safe_load(open('config/litellm/config.yaml.template'))"
 
-lint-toml: ## Validate TOML configs
-	python3 -c "import tomllib; tomllib.loads(open('config/ironclaw/config.toml.template').read())"
-
 lint-compose: ## Validate docker-compose.yml
 	docker compose config --quiet
 
-lint-all: lint lint-yaml lint-toml lint-compose ## Run all linters
+lint-all: lint lint-yaml lint-compose ## Run all linters
 
 # === Operations ===
 

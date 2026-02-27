@@ -55,14 +55,13 @@ sudo systemctl restart docker
 
 ```
 asko_proxy      — Caddy + services that need reverse proxying
-asko_backend    — LiteLLM, Ollama, PostgreSQL, SearXNG, IronClaw, Open WebUI
-asko_agents     — IronClaw, LiteLLM
+asko_backend    — LiteLLM, Ollama, PostgreSQL, SearXNG, Open WebUI
+asko_agents     — LiteLLM (reserved for future agent services)
 asko_automation — n8n, LiteLLM, PostgreSQL, WAHA
 ```
 
 Key isolation guarantees:
-- **IronClaw can reach PostgreSQL** (needed for memory/embeddings via asko_backend) but **cannot reach n8n or WAHA**
-- **n8n cannot reach Ollama or IronClaw** (only LiteLLM and PostgreSQL via asko_automation)
+- **n8n cannot reach Ollama** (only LiteLLM and PostgreSQL via asko_automation)
 - **Ollama is never on the proxy network** (no direct browser-to-inference path)
 - **WAHA is isolated** on the automation network only (optional, starts only with `--profile whatsapp`)
 - **Only Caddy exposes host ports** (80/443)
@@ -86,12 +85,13 @@ Every container has:
 
 ## Application Level
 
-### IronClaw
+### IronClaw (host-installed, optional)
 - **WASM sandbox**: All tool execution runs inside WebAssembly with capability-based permissions
 - **HTTP allowlist**: WASM tools can only reach explicitly permitted hosts
 - **Leak detection**: Outgoing requests are scanned for secret exfiltration
 - **Exec approvals**: Destructive operations require explicit approval
 - **Prompt injection defense**: Built-in pattern detection and sanitization
+- Connects to PostgreSQL and LiteLLM via localhost-bound ports (127.0.0.1)
 
 ### n8n
 - `N8N_COMMUNITY_PACKAGES_ENABLED=false` — No third-party code execution
@@ -110,7 +110,7 @@ Every container has:
 - Spend tracking enabled
 
 ### Open WebUI
-- Signups disabled (`ENABLE_SIGNUP=false`) — admin creates accounts
+- First user to sign up becomes admin; admin can disable further signups from the UI
 - Secret key for session encryption
 
 ## Secret Management

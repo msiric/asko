@@ -4,7 +4,7 @@ Security-first, self-hosted AI assistant stack. One command to deploy.
 
 ## What is asko?
 
-asko packages a complete AI assistant stack into a single `docker compose` deployment: local LLM inference (Ollama), a unified model router with cloud fallback (LiteLLM), a browser-based chat UI (Open WebUI), a WASM-sandboxed AI agent (IronClaw), and workflow automation with WhatsApp bridging (n8n). Everything runs on your hardware, behind Tailscale, with zero exposed ports.
+asko packages a complete AI assistant stack into a single `docker compose` deployment: local LLM inference (Ollama), a unified model router with cloud fallback (LiteLLM), a browser-based chat UI (Open WebUI), private web search (SearXNG), and workflow automation with WhatsApp bridging (n8n). Everything runs on your hardware, behind Tailscale, with zero exposed ports. Optionally, install [IronClaw](https://github.com/nearai/ironclaw) on the host for a WASM-sandboxed AI agent with Telegram support.
 
 ## Quick Start
 
@@ -25,26 +25,26 @@ The setup wizard detects your hardware, generates secure credentials, pulls Dock
                                    │
                     ┌──────────────┴──────────────────────┐
                     │  Caddy (:80/:443)   [asko_proxy]    │
-                    └──┬────────┬────────┬────────┬───────┘
-                       │        │        │        │
-               ┌───────┴─┐ ┌───┴────┐ ┌─┴──────┐ ┌┴───────┐
-               │Open WebUI│ │IronClaw│ │  n8n   │ │LiteLLM │
-               │  (chat)  │ │(agent) │ │(flows) │ │(router)│
-               └────┬─────┘ └───┬────┘ └───┬────┘ └┬──┬───┘
-                    │            │          │       │  │
-            [asko_backend] [asko_agents]  [asko_automation]
-                    │            │          │       │  │
-               ┌────┴────┐      │     ┌────┴───┐   │  │
-               │ Ollama   │◄─────┘     │Postgres│◄──┘  │
-               │ (LLMs)   │           │(pgvec) │       │
-               └──────────┘           └────────┘       │
-               ┌──────────┐                            │
-               │ SearXNG  │  [asko_backend]            │
-               │ (search) │                            │
-               └──────────┘                            │
+                    └──┬──────────────┬────────┬──────────┘
+                       │              │        │
+               ┌───────┴─┐      ┌────┴───┐ ┌──┴─────┐
+               │Open WebUI│      │  n8n   │ │LiteLLM │
+               │  (chat)  │      │(flows) │ │(router)│
+               └────┬─────┘      └───┬────┘ └┬──┬───┘
+                    │                 │       │  │
+            [asko_backend]       [asko_automation]
+                    │                 │       │  │
+               ┌────┴────┐      ┌────┴───┐   │  │
+               │ Ollama   │      │Postgres│◄──┘  │
+               │ (LLMs)   │      │(pgvec) │      │
+               └──────────┘      └────────┘      │
+               ┌──────────┐                      │
+               │ SearXNG  │  [asko_backend]      │
+               │ (search) │                      │
+               └──────────┘                      │
 ```
 
-5 isolated Docker networks enforce least-privilege communication. Only Caddy exposes host ports. See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
+4 isolated Docker networks enforce least-privilege communication. Only Caddy exposes host ports. See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
 ## Hardware Requirements
 
@@ -61,19 +61,19 @@ The setup wizard detects your hardware, generates secure credentials, pulls Dock
 |---------|---------|
 | **Ollama** | Local LLM inference (CPU) |
 | **LiteLLM** | Model routing proxy — local-first, cloud fallback |
-| **Open WebUI** | Browser-based chat (multi-user) |
-| **IronClaw** | WASM-sandboxed AI agent (Telegram, Signal) |
+| **Open WebUI** | Browser-based chat (multi-user, first user becomes admin) |
 | **n8n** | Workflow automation + WhatsApp bridge |
 | **SearXNG** | Private web search (enables AI web search in chat) |
-| **WAHA** | WhatsApp Web API bridge (opt-in) |
-| **LinguaCafe** | Language learning: Czech, Croatian, English (opt-in) |
+| **WAHA** | WhatsApp Web API bridge (opt-in: `--profile whatsapp`) |
+| **LinguaCafe** | Language learning (opt-in: `--profile linguacafe`) |
 | **PostgreSQL** | Database with pgvector for embeddings |
 | **Caddy** | Reverse proxy |
+
+> **IronClaw** (optional): Install on the host for a WASM-sandboxed AI agent with Telegram support. See [docs/SESSION-LOG.md](docs/SESSION-LOG.md) for setup instructions.
 
 ## Security
 
 - Zero ports exposed to the internet — Tailscale-only access
-- WASM sandbox for all AI agent tool execution (IronClaw)
 - Docker hardening: `cap_drop: ALL`, `no-new-privileges`, resource limits on every container
 - 4 isolated Docker networks (least-privilege communication)
 - Auto-generated secrets, `.env` chmod 600
@@ -87,8 +87,8 @@ asko defaults to local-first inference with cloud fallback:
 
 | Model | Type | Speed (CPU) |
 |-------|------|-------------|
-| phi3:3.8b | Local (default) | ~10-15 tok/s |
-| llama3.1:8b | Local (large) | ~5-8 tok/s |
+| qwen2.5:7b | Local (default) | ~8-12 tok/s |
+| nomic-embed-text | Local (embeddings) | N/A |
 | Claude Sonnet/Opus | Cloud fallback | Fast (API) |
 | GPT-4o Mini | Cloud fallback | Fast (API) |
 

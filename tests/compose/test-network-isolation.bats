@@ -39,59 +39,9 @@ elif isinstance(nets, dict):
     }
 }
 
-@test "ironclaw is on proxy, agents, and backend networks" {
-    networks=$(get_service_networks "ironclaw")
-    if [[ -z "$networks" ]]; then
-        skip "python3 yaml not available"
-    fi
-
-    echo "IronClaw networks: $networks"
-    echo "$networks" | grep -q "asko_proxy"
-    echo "$networks" | grep -q "asko_agents"
-    echo "$networks" | grep -q "asko_backend"
-    # Should NOT be on automation
-    ! echo "$networks" | grep -q "asko_automation"
-}
-
-@test "ironclaw can reach postgres for memory/embeddings" {
-    # IronClaw needs postgres for its hybrid search memory via asko_backend
-    ic_nets=$(get_service_networks "ironclaw")
-    pg_nets=$(get_service_networks "postgres")
-    if [[ -z "$ic_nets" ]] || [[ -z "$pg_nets" ]]; then
-        skip "python3 yaml not available"
-    fi
-
-    shared=$(comm -12 <(echo "$ic_nets" | sort) <(echo "$pg_nets" | sort))
-    echo "Shared networks between ironclaw and postgres: '$shared'"
-    [[ -n "$shared" ]]
-}
-
-@test "ironclaw is isolated from automation network" {
-    ic_nets=$(get_service_networks "ironclaw")
-    if [[ -z "$ic_nets" ]]; then
-        skip "python3 yaml not available"
-    fi
-
-    # IronClaw should not be on automation (n8n's network)
-    ! echo "$ic_nets" | grep -q "asko_automation"
-}
-
-@test "ironclaw can reach litellm" {
-    ic_nets=$(get_service_networks "ironclaw")
-    ll_nets=$(get_service_networks "litellm")
-    if [[ -z "$ic_nets" ]] || [[ -z "$ll_nets" ]]; then
-        skip "python3 yaml not available"
-    fi
-
-    shared=$(comm -12 <(echo "$ic_nets" | sort) <(echo "$ll_nets" | sort))
-    echo "Shared networks between ironclaw and litellm: '$shared'"
-    [[ -n "$shared" ]]
-}
-
 @test "n8n is on proxy and automation networks only" {
     networks=$(get_service_networks "n8n")
     if [[ -z "$networks" ]]; then
-        # n8n may not exist yet in Phase 2 compose - skip
         skip "n8n not in compose or python3 yaml not available"
     fi
 

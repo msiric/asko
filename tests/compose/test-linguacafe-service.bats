@@ -66,7 +66,7 @@ assert 'linguacafe' in profiles, f'Missing linguacafe profile: {profiles}'
 import yaml
 with open('${ASKO_ROOT}/docker-compose.yml') as f:
     config = yaml.safe_load(f)
-for name in ['linguacafe', 'linguacafe-db', 'linguacafe-redis', 'linguacafe-nlp']:
+for name in ['linguacafe', 'linguacafe-db', 'linguacafe-redis', 'linguacafe-python-service']:
     svc = config['services'][name]
     sec = svc.get('security_opt', [])
     assert any('no-new-privileges' in s for s in sec), f'{name} missing no-new-privileges'

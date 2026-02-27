@@ -28,8 +28,8 @@ echo "  Restarting inference layer (ollama, litellm)..."
 docker compose up -d --remove-orphans ollama litellm
 sleep 5
 
-echo "  Restarting agent + automation layer (ironclaw, n8n, waha)..."
-docker compose up -d --remove-orphans ironclaw n8n waha
+echo "  Restarting automation layer (n8n)..."
+docker compose up -d --remove-orphans n8n
 sleep 5
 
 echo "  Restarting UI + proxy layer (open-webui, caddy)..."

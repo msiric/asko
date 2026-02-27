@@ -15,8 +15,8 @@ echo "Detected RAM: ${total_ram_gb}GB"
 echo ""
 
 # Always pull: default model + embeddings
-echo -e "${YELLOW}Pulling default model (phi3:3.8b)...${NC}"
-docker compose exec -T ollama ollama pull phi3:3.8b
+echo -e "${YELLOW}Pulling default model (qwen2.5:7b)...${NC}"
+docker compose exec -T ollama ollama pull qwen2.5:7b
 
 echo -e "${YELLOW}Pulling embeddings model (nomic-embed-text)...${NC}"
 docker compose exec -T ollama ollama pull nomic-embed-text
@@ -24,8 +24,8 @@ docker compose exec -T ollama ollama pull nomic-embed-text
 # Conditional: larger model if enough RAM
 if [[ "$total_ram_gb" -ge 24 ]]; then
     echo ""
-    echo -e "${YELLOW}Sufficient RAM detected. Pulling larger model (llama3.1:8b)...${NC}"
-    docker compose exec -T ollama ollama pull llama3.1:8b
+    echo -e "${YELLOW}Sufficient RAM detected. Pulling larger model (qwen2.5:14b)...${NC}"
+    docker compose exec -T ollama ollama pull qwen2.5:14b
 fi
 
 echo ""
