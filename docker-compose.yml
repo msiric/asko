@@ -262,6 +262,8 @@ services:
     restart: unless-stopped
 
   waha:
+    # :latest is intentional — WAHA's Docker Hub tags don't follow semantic versioning
+    # (e.g. 2024.12, 2026.2.2 don't exist). Internal-only service, behind whatsapp profile.
     image: devlikeapro/waha:latest
     container_name: asko-waha
     profiles: ["whatsapp"]

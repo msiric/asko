@@ -323,7 +323,7 @@ post_setup() {
     # --- Wait for Open WebUI API to be ready ---
     info "Waiting for Open WebUI API..."
     local webui_ready=false
-    for _ in $(seq 1 30); do
+    for _ in $(seq 1 45); do
         if docker compose exec -T open-webui \
             curl -sf http://localhost:8080/api/v1/auths/signup -X OPTIONS > /dev/null 2>&1; then
             webui_ready=true
@@ -332,7 +332,7 @@ post_setup() {
         sleep 2
     done
     if [[ "$webui_ready" != "true" ]]; then
-        warn "Open WebUI API not responding after 60s. Admin creation may fail."
+        warn "Open WebUI API not responding after 90s. Admin creation may fail."
     fi
 
     # --- Open WebUI: create admin account ---
