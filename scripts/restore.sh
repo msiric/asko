@@ -53,13 +53,28 @@ for dump in "${BACKUP_DIR}"/*.sql.gz; do
     db=$(basename "$dump" .sql.gz)
     echo -n "  ${db}... "
 
+    # Verify backup integrity before restoring
+    if ! gunzip -t "$dump" > /dev/null 2>&1; then
+        echo -e "${RED}FAIL (corrupt backup file)${NC}"
+        restore_failed=$((restore_failed + 1))
+        continue
+    fi
+
     # Drop and recreate the database, then restore
-    docker compose exec -T postgres dropdb -U "${POSTGRES_USER:-asko}" --if-exists "$db" 2>/dev/null
-    docker compose exec -T postgres createdb -U "${POSTGRES_USER:-asko}" "$db" 2>/dev/null
+    if ! docker compose exec -T postgres dropdb -U "${POSTGRES_USER:-asko}" --if-exists "$db" 2>&1; then
+        echo -e "${RED}FAIL (dropdb error)${NC}"
+        restore_failed=$((restore_failed + 1))
+        continue
+    fi
+    if ! docker compose exec -T postgres createdb -U "${POSTGRES_USER:-asko}" "$db" 2>&1; then
+        echo -e "${RED}FAIL (createdb error)${NC}"
+        restore_failed=$((restore_failed + 1))
+        continue
+    fi
     if gunzip -c "$dump" | docker compose exec -T postgres psql -U "${POSTGRES_USER:-asko}" "$db" > /dev/null 2>&1; then
         echo -e "${GREEN}OK${NC}"
     else
-        echo -e "${RED}FAIL${NC}"
+        echo -e "${RED}FAIL (restore error)${NC}"
         restore_failed=$((restore_failed + 1))
     fi
 done

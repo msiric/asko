@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh" || exit 1
 load_env
 
 BACKUP_DIR="${ASKO_ROOT}/backups/$(date +%Y%m%d_%H%M%S)"
@@ -19,14 +19,19 @@ cd "$ASKO_ROOT"
 echo -e "${YELLOW}Dumping databases...${NC}"
 for db in asko asko_ironclaw asko_n8n asko_openwebui; do
     dump_file="${BACKUP_DIR}/${db}.sql.gz"
-    docker compose exec -T postgres pg_dump -U "${POSTGRES_USER:-asko}" "$db" 2>/dev/null \
-        | gzip > "$dump_file"
 
-    # Verify dump is not empty (indicates a failed or partial dump)
-    if [[ -s "$dump_file" ]] && [[ "$(stat -f%z "$dump_file" 2>/dev/null || stat -c%s "$dump_file" 2>/dev/null)" -gt 100 ]]; then
-        echo "  ${db}: OK"
+    # Use pipefail to catch pg_dump failures (exit code lost in pipe otherwise)
+    if (set -o pipefail; docker compose exec -T postgres pg_dump -U "${POSTGRES_USER:-asko}" "$db" 2>/dev/null | gzip > "$dump_file"); then
+        # Verify dump is not empty
+        file_size="$(stat -f%z "$dump_file" 2>/dev/null || stat -c%s "$dump_file" 2>/dev/null || echo 0)"
+        if [[ "$file_size" -gt 100 ]]; then
+            echo "  ${db}: OK"
+        else
+            echo "  ${db}: SKIP (empty — database may not exist yet)"
+            rm -f "$dump_file"
+        fi
     else
-        echo "  ${db}: SKIP (empty dump — database may not exist yet)"
+        echo "  ${db}: SKIP (pg_dump failed — database may not exist yet)"
         rm -f "$dump_file"
     fi
 done
@@ -39,7 +44,7 @@ cp -r "${ASKO_ROOT}/config/" "${BACKUP_DIR}/config/" 2>/dev/null || true
 # Record current image versions
 docker compose images --format json > "${BACKUP_DIR}/images.json" 2>/dev/null || true
 
-# Export n8n workflows (pipe to host since container can't write to host paths)
+# Export n8n workflows
 echo -e "${YELLOW}Exporting n8n workflows...${NC}"
 mkdir -p "${BACKUP_DIR}/n8n-workflows"
 docker compose exec -T n8n n8n export:workflow --all --output=/dev/stdout 2>/dev/null \
@@ -50,8 +55,11 @@ echo ""
 echo -e "${GREEN}Backup complete: ${BACKUP_DIR}${NC}"
 echo "Size: $(du -sh "$BACKUP_DIR" 2>/dev/null | cut -f1 || echo 'unknown')"
 
-# Retain only last 7 backups (older ones are removed)
+# Retain only last 7 backups
 echo ""
 echo -e "${YELLOW}Cleaning older backups (retaining last 7)...${NC}"
-ls -dt "${ASKO_ROOT}/backups"/*/ 2>/dev/null | tail -n +8 | xargs rm -rf 2>/dev/null || true
+mapfile -t old_backups < <(ls -dt "${ASKO_ROOT}/backups"/*/ 2>/dev/null | tail -n +8)
+for dir in "${old_backups[@]}"; do
+    [[ -n "$dir" ]] && rm -rf "$dir"
+done
 echo "Done"

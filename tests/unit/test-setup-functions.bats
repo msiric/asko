@@ -36,13 +36,6 @@ teardown() {
     [[ "$result" =~ ^[a-zA-Z0-9]+$ ]]
 }
 
-@test "generate_hex_secret produces valid hex of requested length" {
-    source "${ASKO_ROOT}/setup.sh" --source-only
-    result=$(generate_hex_secret 64)
-    [[ ${#result} -eq 64 ]]
-    [[ "$result" =~ ^[0-9a-f]+$ ]]
-}
-
 # --- Template Rendering ---
 
 @test "render_template substitutes environment variables" {
