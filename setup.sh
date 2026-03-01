@@ -220,6 +220,10 @@ SEARXNG_SECRET=$(generate_secret 32)
 # --- LinguaCafe ---
 LINGUACAFE_DB_PASSWORD=$(generate_secret 32)
 
+# --- WAHA (only needed with --profile whatsapp) ---
+WAHA_API_KEY=$(generate_secret 32)
+WAHA_DASHBOARD_PASSWORD=$(generate_secret 32)
+
 # --- Admin (auto-generated — used for Open WebUI and n8n) ---
 ADMIN_EMAIL=admin@${DOMAIN_BASE:-asko.local}
 ADMIN_PASSWORD=$(generate_secret 24)

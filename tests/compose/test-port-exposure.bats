@@ -2,18 +2,16 @@
 
 load '../helpers/test-helpers'
 
-@test "only caddy and n8n expose public ports" {
+@test "only caddy exposes public ports" {
     cd "${ASKO_ROOT}"
 
-    # Get always-on services (no profiles) that expose ports to all interfaces
+    # Get all services (including profiled) that expose ports to all interfaces
     # Ports bound to 127.0.0.1 are host-local only, not public
     services_with_public_ports=$(python3 -c "
 import yaml
 with open('${ASKO_ROOT}/docker-compose.yml') as f:
     config = yaml.safe_load(f)
 for name, svc in config.get('services', {}).items():
-    if svc.get('profiles'):
-        continue
     for port in svc.get('ports', []):
         p = str(port)
         if not p.startswith('127.0.0.1:'):
@@ -28,7 +26,7 @@ for name, svc in config.get('services', {}).items():
     echo "Services with public ports: $services_with_public_ports"
     while IFS= read -r svc; do
         [[ -z "$svc" ]] && continue
-        [[ "$svc" == "caddy" ]] || [[ "$svc" == "n8n" ]] || {
+        [[ "$svc" == "caddy" ]] || {
             echo "FAIL: $svc should not expose public ports"
             false
         }
@@ -60,4 +58,29 @@ for port in caddy.get('ports', []):
     echo "Exposed ports: $exposed_ports"
     [[ $(echo "$exposed_ports" | wc -l) -eq 1 ]]
     echo "$exposed_ports" | grep -q "80"
+}
+
+@test "all non-caddy services bind to localhost" {
+    cd "${ASKO_ROOT}"
+
+    # Every service with ports (except caddy) must bind to 127.0.0.1
+    non_localhost=$(python3 -c "
+import yaml
+with open('${ASKO_ROOT}/docker-compose.yml') as f:
+    config = yaml.safe_load(f)
+for name, svc in config.get('services', {}).items():
+    if name == 'caddy':
+        continue
+    for port in svc.get('ports', []):
+        p = str(port)
+        if not p.startswith('127.0.0.1:'):
+            print(name + ': ' + p)
+" 2>/dev/null || echo "PARSE_ERROR")
+
+    if [[ "$non_localhost" == "PARSE_ERROR" ]]; then
+        skip "python3 yaml module not available"
+    fi
+
+    echo "Non-localhost port bindings: ${non_localhost:-none}"
+    [[ -z "$non_localhost" ]]
 }

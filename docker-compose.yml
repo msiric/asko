@@ -213,7 +213,7 @@ services:
     image: n8nio/n8n:1.76.1
     container_name: asko-n8n
     ports:
-      - "5678:5678"
+      - "127.0.0.1:5678:5678"
     networks:
       - asko_proxy
       - asko_automation
@@ -270,16 +270,16 @@ services:
     networks:
       - asko_automation
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     volumes:
       - asko_waha_data:/app/data
     environment:
       WHATSAPP_DEFAULT_ENGINE: WEBJS
       WAHA_PRINT_QR: "true"
-      WHATSAPP_API_KEY: "asko"
+      WHATSAPP_API_KEY: ${WAHA_API_KEY}
       WAHA_DASHBOARD_ENABLED: "true"
-      WAHA_DASHBOARD_USERNAME: "admin"
-      WAHA_DASHBOARD_PASSWORD: "admin"
+      WAHA_DASHBOARD_USERNAME: admin
+      WAHA_DASHBOARD_PASSWORD: ${WAHA_DASHBOARD_PASSWORD}
     deploy:
       resources:
         limits:
@@ -308,7 +308,7 @@ services:
     networks:
       - asko_linguacafe
     ports:
-      - "9191:80"
+      - "127.0.0.1:9191:80"
     volumes:
       - asko_linguacafe_storage:/var/www/html/storage
     environment:
