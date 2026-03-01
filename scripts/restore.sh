@@ -47,6 +47,7 @@ docker compose stop open-webui n8n litellm searxng caddy 2>/dev/null || true
 
 # Restore databases (drop and recreate to avoid conflicts)
 echo -e "${YELLOW}Restoring databases...${NC}"
+restore_failed=0
 for dump in "${BACKUP_DIR}"/*.sql.gz; do
     [[ -f "$dump" ]] || continue
     db=$(basename "$dump" .sql.gz)
@@ -55,10 +56,20 @@ for dump in "${BACKUP_DIR}"/*.sql.gz; do
     # Drop and recreate the database, then restore
     docker compose exec -T postgres dropdb -U "${POSTGRES_USER:-asko}" --if-exists "$db" 2>/dev/null
     docker compose exec -T postgres createdb -U "${POSTGRES_USER:-asko}" "$db" 2>/dev/null
-    gunzip -c "$dump" | docker compose exec -T postgres psql -U "${POSTGRES_USER:-asko}" "$db" > /dev/null 2>&1 \
-        && echo -e "${GREEN}OK${NC}" \
-        || echo -e "${RED}FAIL${NC}"
+    if gunzip -c "$dump" | docker compose exec -T postgres psql -U "${POSTGRES_USER:-asko}" "$db" > /dev/null 2>&1; then
+        echo -e "${GREEN}OK${NC}"
+    else
+        echo -e "${RED}FAIL${NC}"
+        restore_failed=$((restore_failed + 1))
+    fi
 done
+
+if [[ "$restore_failed" -gt 0 ]]; then
+    echo ""
+    echo -e "${RED}${restore_failed} database(s) failed to restore. Services NOT restarted.${NC}"
+    echo "Fix the issue and run: docker compose up -d"
+    exit 1
+fi
 
 # Restart all services
 echo -e "${YELLOW}Restarting services...${NC}"
