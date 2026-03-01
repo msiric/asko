@@ -71,6 +71,9 @@ Add environment variables:
       SERPAPI_KEY: ${SERPAPI_KEY}
       GOG_KEYRING_PASSWORD: ${GOG_KEYRING_PASSWORD}
       GH_CONFIG_DIR: /home/node/.openclaw/gh-config
+      ROHLIK_USERNAME: ${ROHLIK_USERNAME}
+      ROHLIK_PASSWORD: ${ROHLIK_PASSWORD}
+      ROHLIK_BASE_URL: https://www.rohlik.cz
       PATH: /home/node/.local/bin:/home/node/.openclaw:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ```
 
@@ -114,12 +117,19 @@ docker exec miles-openclaw-gateway-1 sh -c \
   "curl -fsSL https://github.com/cli/cli/releases/latest/download/gh_*_linux_amd64.tar.gz | \
    tar xz -C /tmp/ && cp /tmp/gh_*/bin/gh /home/node/.openclaw/gh && chmod +x /home/node/.openclaw/gh"
 
+# mcporter (MCP tool caller — for Rohlik.cz integration)
+docker exec miles-openclaw-gateway-1 sh -c \
+  "cd /home/node/.openclaw && npm install mcporter"
+
 # Create bin directory and symlinks
 docker exec miles-openclaw-gateway-1 sh -c \
   "mkdir -p /home/node/.local/bin && \
    ln -sf /home/node/.openclaw/gog /home/node/.local/bin/gog && \
-   ln -sf /home/node/.openclaw/gh /home/node/.local/bin/gh"
+   ln -sf /home/node/.openclaw/gh /home/node/.local/bin/gh && \
+   ln -sf /home/node/.openclaw/node_modules/.bin/mcporter /home/node/.local/bin/mcporter"
 ```
+
+**Note:** Symlinks are lost on container recreation. The `container-init.sh` script (at `~/.openclaw/scripts/`) re-creates them. A `@reboot` crontab entry runs it automatically.
 
 ### Authenticate CLI tools
 
