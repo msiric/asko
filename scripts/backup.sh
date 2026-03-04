@@ -44,12 +44,21 @@ cp -r "${ASKO_ROOT}/config/" "${BACKUP_DIR}/config/" 2>/dev/null || true
 # Record current image versions
 docker compose images --format json > "${BACKUP_DIR}/images.json" 2>/dev/null || true
 
-# Export n8n workflows
-echo -e "${YELLOW}Exporting n8n workflows...${NC}"
+# Record installed Ollama models (for re-pulling after restore)
+echo -e "${YELLOW}Recording Ollama models...${NC}"
+docker compose exec -T ollama ollama list > "${BACKUP_DIR}/ollama-models.txt" 2>/dev/null \
+    && echo "  Model list saved" \
+    || echo "  SKIP (Ollama may not be running)"
+
+# Export n8n workflows and credentials
+echo -e "${YELLOW}Exporting n8n data...${NC}"
 mkdir -p "${BACKUP_DIR}/n8n-workflows"
 docker compose exec -T n8n n8n export:workflow --all --output=/dev/stdout 2>/dev/null \
     > "${BACKUP_DIR}/n8n-workflows/all-workflows.json" \
-    || echo "  n8n export: SKIP (n8n may not be running)"
+    || echo "  n8n workflow export: SKIP (n8n may not be running)"
+docker compose exec -T n8n n8n export:credentials --all --output=/dev/stdout 2>/dev/null \
+    > "${BACKUP_DIR}/n8n-workflows/all-credentials.json" \
+    || echo "  n8n credential export: SKIP"
 
 echo ""
 echo -e "${GREEN}Backup complete: ${BACKUP_DIR}${NC}"

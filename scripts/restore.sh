@@ -41,7 +41,21 @@ if [[ -d "${BACKUP_DIR}/config" ]]; then
     cp -r "${BACKUP_DIR}/config/"* "${ASKO_ROOT}/config/" 2>/dev/null || true
 fi
 
-# Stop application services before database restore (postgres stays running)
+# Ensure postgres is running (stop app services, keep postgres)
+echo -e "${YELLOW}Ensuring PostgreSQL is running...${NC}"
+docker compose up -d postgres
+for _ in {1..30}; do
+    if docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-asko}" &>/dev/null; then
+        break
+    fi
+    sleep 2
+done
+if ! docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-asko}" &>/dev/null; then
+    echo -e "${RED}PostgreSQL failed to start. Cannot restore databases.${NC}"
+    exit 1
+fi
+
+# Stop application services before database restore
 echo -e "${YELLOW}Stopping application services...${NC}"
 docker compose stop open-webui n8n litellm searxng caddy 2>/dev/null || true
 
@@ -83,6 +97,15 @@ for dump in "${BACKUP_DIR}"/*.sql.gz; do
     fi
 done
 
+# Re-create pgvector extensions (init script only runs on first postgres startup)
+echo -e "${YELLOW}Ensuring pgvector extensions...${NC}"
+for db in asko asko_openwebui; do
+    docker compose exec -T postgres psql -U "${POSTGRES_USER:-asko}" -d "$db" \
+        -c "CREATE EXTENSION IF NOT EXISTS vector;" > /dev/null 2>&1 \
+        && echo "  ${db}: pgvector OK" \
+        || echo "  ${db}: pgvector SKIP (database may not exist)"
+done
+
 if [[ "$restore_failed" -gt 0 ]]; then
     echo ""
     echo -e "${RED}${restore_failed} database(s) failed to restore. Services NOT restarted.${NC}"
@@ -94,5 +117,27 @@ fi
 echo -e "${YELLOW}Restarting services...${NC}"
 docker compose up -d
 
+# Import n8n credentials if backup includes them
+if [[ -f "${BACKUP_DIR}/n8n-workflows/all-credentials.json" ]]; then
+    echo -e "${YELLOW}Restoring n8n credentials...${NC}"
+    for _ in {1..15}; do
+        docker compose exec -T n8n curl -sf http://localhost:5678/healthz > /dev/null 2>&1 && break
+        sleep 2
+    done
+    docker compose exec -T n8n n8n import:credentials --input=/dev/stdin \
+        < "${BACKUP_DIR}/n8n-workflows/all-credentials.json" > /dev/null 2>&1 \
+        && echo "  n8n credentials restored" \
+        || echo "  n8n credentials: SKIP (import failed or n8n not ready)"
+fi
+
 echo ""
 echo -e "${GREEN}Restore complete.${NC}"
+
+# Show post-restore guidance
+if [[ -f "${BACKUP_DIR}/ollama-models.txt" ]]; then
+    echo ""
+    echo -e "${YELLOW}Ollama models need re-pulling. Previously installed:${NC}"
+    cat "${BACKUP_DIR}/ollama-models.txt"
+    echo ""
+    echo "Re-pull with: make pull-models"
+fi
