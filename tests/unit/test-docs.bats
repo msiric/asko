@@ -6,7 +6,6 @@ load '../helpers/test-helpers'
     [[ -f "${ASKO_ROOT}/docs/SECURITY.md" ]]
     grep -q "UFW\|ufw" "${ASKO_ROOT}/docs/SECURITY.md"
     grep -q "Tailscale\|tailscale" "${ASKO_ROOT}/docs/SECURITY.md"
-    grep -q "WASM\|wasm" "${ASKO_ROOT}/docs/SECURITY.md"
     grep -q "no-new-privileges" "${ASKO_ROOT}/docs/SECURITY.md"
     grep -q "cap_drop" "${ASKO_ROOT}/docs/SECURITY.md"
     grep -q "userns-remap\|user namespace" "${ASKO_ROOT}/docs/SECURITY.md"

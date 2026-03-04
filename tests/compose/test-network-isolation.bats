@@ -49,7 +49,6 @@ elif isinstance(nets, dict):
     echo "$networks" | grep -q "asko_proxy"
     echo "$networks" | grep -q "asko_automation"
     ! echo "$networks" | grep -q "asko_backend"
-    ! echo "$networks" | grep -q "asko_agents"
 }
 
 @test "ollama is on backend network only" {
@@ -61,7 +60,6 @@ elif isinstance(nets, dict):
     echo "Ollama networks: $networks"
     echo "$networks" | grep -q "asko_backend"
     ! echo "$networks" | grep -q "asko_proxy"
-    ! echo "$networks" | grep -q "asko_agents"
     ! echo "$networks" | grep -q "asko_automation"
 }
 

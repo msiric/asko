@@ -1,7 +1,6 @@
 use_default_settings: true
 
 server:
-  secret_key: ""
   bind_address: "[::]:8080"
 
 search:

@@ -71,16 +71,6 @@ LiteLLM automatically falls back to cloud models when local models fail or time 
 
 Use the model dropdown at the top of the chat to select any available model.
 
-### In IronClaw
-
-Change the default model in `.env`:
-
-```bash
-IRONCLAW_LLM_MODEL=local-large
-```
-
-Then restart: `docker compose restart ironclaw`
-
 ### In n8n Workflows
 
 Each AI node in n8n can specify its model. Edit the workflow and change the `model` parameter.

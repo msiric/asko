@@ -18,7 +18,7 @@ if ! command -v bats &>/dev/null; then
 fi
 
 # Test categories
-CATEGORIES=("unit" "templates" "compose" "integration" "security" "e2e")
+CATEGORIES=("unit" "templates" "compose" "integration" "security")
 
 # If a category is specified, run only that
 if [[ $# -gt 0 ]]; then

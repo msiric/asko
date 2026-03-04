@@ -2,7 +2,7 @@
 
 ## What is asko?
 
-A security-first, self-hosted AI assistant stack deployed via Docker Compose. One command (`./setup.sh`) provisions 7 Docker services: Ollama (local LLMs), LiteLLM (model router), Open WebUI (chat UI), n8n (workflow automation), SearXNG (private search), PostgreSQL (with pgvector), and Caddy (reverse proxy). Optional profiles add WAHA (WhatsApp bridge) and LinguaCafe (language learning). IronClaw (WASM-sandboxed agent) is installed separately on the host.
+A security-first, self-hosted AI assistant stack deployed via Docker Compose. One command (`./setup.sh`) provisions 7 Docker services: Ollama (local LLMs), LiteLLM (model router), Open WebUI (chat UI), n8n (workflow automation), SearXNG (private search), PostgreSQL (with pgvector), and Caddy (reverse proxy). Optional profiles add WAHA (WhatsApp bridge) and LinguaCafe (language learning).
 
 ## Project Structure
 
@@ -23,7 +23,7 @@ docs/                       — Security model, architecture, guides
 - **Shell scripts**: Bash, `set -euo pipefail`, source `scripts/common.sh` for shared code
 - **Config templates**: `*.template` files rendered by `setup.sh` via `envsubst`. LiteLLM config is copied verbatim (uses its own `os.environ/` syntax)
 - **Docker hardening**: Every service has `cap_drop: ALL`, `no-new-privileges`, memory limits, healthchecks, and log rotation
-- **Network isolation**: 4 Docker networks (proxy, backend, agents, automation) enforce least-privilege
+- **Network isolation**: 4 Docker networks (proxy, backend, automation, linguacafe) enforce least-privilege
 - **Secrets**: Auto-generated alphanumeric strings via `python3 secrets` module, `.env` chmod 600
 - **Testing**: BATS framework, TDD workflow, tests organized by category in `tests/`
 - **Image tags**: Always pinned to specific versions, never `:latest` or floating

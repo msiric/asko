@@ -42,7 +42,6 @@ elif isinstance(nets, dict):
     echo "$networks" | grep -q "asko_backend"
     ! echo "$networks" | grep -q "asko_proxy"
     ! echo "$networks" | grep -q "asko_automation"
-    ! echo "$networks" | grep -q "asko_agents"
 }
 
 @test "searxng has security hardening" {

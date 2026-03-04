@@ -54,10 +54,10 @@ sudo systemctl restart docker
 ### Four Isolated Docker Networks
 
 ```
-asko_proxy      — Caddy + services that need reverse proxying
-asko_backend    — LiteLLM, Ollama, PostgreSQL, SearXNG, Open WebUI
-asko_agents     — LiteLLM (reserved for future agent services)
-asko_automation — n8n, LiteLLM, PostgreSQL, WAHA
+asko_proxy       — Caddy + services that need reverse proxying
+asko_backend     — LiteLLM, Ollama, PostgreSQL, SearXNG, Open WebUI
+asko_automation  — n8n, LiteLLM, PostgreSQL, WAHA
+asko_linguacafe  — LinguaCafe services (fully isolated, profile-optional)
 ```
 
 Key isolation guarantees:
@@ -85,14 +85,6 @@ Every container has:
 
 ## Application Level
 
-### IronClaw (host-installed, optional)
-- **WASM sandbox**: All tool execution runs inside WebAssembly with capability-based permissions
-- **HTTP allowlist**: WASM tools can only reach explicitly permitted hosts
-- **Leak detection**: Outgoing requests are scanned for secret exfiltration
-- **Exec approvals**: Destructive operations require explicit approval
-- **Prompt injection defense**: Built-in pattern detection and sanitization
-- Connects to PostgreSQL and LiteLLM via localhost-bound ports (127.0.0.1)
-
 ### n8n
 - `N8N_COMMUNITY_PACKAGES_ENABLED=false` — No third-party code execution
 - `N8N_NODES_EXCLUDE=["n8n-nodes-base.git"]` — Git node disabled (CVE mitigation)
@@ -102,7 +94,7 @@ Every container has:
 - Basic auth required on all access
 
 ### PostgreSQL
-- Separate database per service (asko_ironclaw, asko_n8n, asko_openwebui, asko_litellm)
+- Separate database per service (asko_n8n, asko_openwebui)
 - Never on the proxy network (no direct browser access)
 
 ### LiteLLM

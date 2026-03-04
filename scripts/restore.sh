@@ -51,6 +51,10 @@ restore_failed=0
 for dump in "${BACKUP_DIR}"/*.sql.gz; do
     [[ -f "$dump" ]] || continue
     db=$(basename "$dump" .sql.gz)
+    if ! [[ "$db" =~ ^[a-zA-Z0-9_]+$ ]]; then
+        echo -e "  ${db}... ${RED}SKIP (invalid database name)${NC}"
+        continue
+    fi
     echo -n "  ${db}... "
 
     # Verify backup integrity before restoring

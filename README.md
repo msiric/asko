@@ -4,7 +4,7 @@ Security-first, self-hosted AI assistant stack. One command to deploy.
 
 ## What is asko?
 
-asko packages a complete AI assistant stack into a single `docker compose` deployment: local LLM inference (Ollama), a unified model router with cloud fallback (LiteLLM), a browser-based chat UI (Open WebUI), private web search (SearXNG), and workflow automation with WhatsApp bridging (n8n). Everything runs on your hardware, behind Tailscale, with zero exposed ports. Optionally, install [IronClaw](https://github.com/nearai/ironclaw) on the host for a WASM-sandboxed AI agent with Telegram support.
+asko packages a complete AI assistant stack into a single `docker compose` deployment: local LLM inference (Ollama), a unified model router with cloud fallback (LiteLLM), a browser-based chat UI (Open WebUI), private web search (SearXNG), and workflow automation with WhatsApp bridging (n8n). Everything runs on your hardware, behind Tailscale, with zero exposed ports.
 
 ## Quick Start
 
@@ -68,8 +68,6 @@ The setup wizard detects your hardware, generates secure credentials, pulls Dock
 | **LinguaCafe** | Language learning (opt-in: `--profile linguacafe`) |
 | **PostgreSQL** | Database with pgvector for embeddings |
 | **Caddy** | Reverse proxy |
-
-> **IronClaw** (optional): Install on the host for a WASM-sandboxed AI agent with Telegram support. See [docs/SESSION-LOG.md](docs/SESSION-LOG.md) for setup instructions.
 
 ## Security
 

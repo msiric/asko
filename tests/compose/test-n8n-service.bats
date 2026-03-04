@@ -67,7 +67,6 @@ elif isinstance(env, list):
     echo "$networks" | grep -q "asko_proxy"
     echo "$networks" | grep -q "asko_automation"
     ! echo "$networks" | grep -q "asko_backend"
-    ! echo "$networks" | grep -q "asko_agents"
 }
 
 @test "waha is on automation network only" {
@@ -78,7 +77,6 @@ elif isinstance(env, list):
     echo "$networks" | grep -q "asko_automation"
     ! echo "$networks" | grep -q "asko_proxy"
     ! echo "$networks" | grep -q "asko_backend"
-    ! echo "$networks" | grep -q "asko_agents"
 }
 
 @test "n8n has community packages disabled" {

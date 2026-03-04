@@ -122,7 +122,6 @@ services:
     networks:
       - asko_proxy
       - asko_backend
-      - asko_agents
       - asko_automation
     volumes:
       - ./config/litellm/config.yaml:/app/config.yaml:ro
@@ -155,11 +154,6 @@ services:
     cap_drop:
       - ALL
     restart: unless-stopped
-
-  # === AGENT LAYER ===
-  # NOTE: IronClaw does not publish official Docker images.
-  # Install it on the host instead: curl -fsSL https://ironclaw.sh | sh
-  # Then run: ironclaw onboard
 
   # === UI LAYER ===
 
@@ -213,9 +207,9 @@ services:
     image: n8nio/n8n:1.76.1
     container_name: asko-n8n
     ports:
-      # Exposed to LAN for direct browser access. n8n has its own basic auth.
-      # Bind to 127.0.0.1:5678:5678 if LAN access is not needed.
-      - "5678:5678"
+      # Bound to localhost. Access via Caddy reverse proxy or Tailscale.
+      # Change to 0.0.0.0:5678:5678 if direct LAN access is needed.
+      - "127.0.0.1:5678:5678"
     networks:
       - asko_proxy
       - asko_automation
@@ -340,7 +334,7 @@ services:
     restart: unless-stopped
 
   linguacafe-db:
-    image: mysql:8.0
+    image: mysql:8.0.41
     container_name: asko-linguacafe-db
     profiles: ["linguacafe"]
     networks:
@@ -374,7 +368,7 @@ services:
     restart: unless-stopped
 
   linguacafe-redis:
-    image: redis:7.2-alpine
+    image: redis:7.2.7-alpine
     container_name: asko-linguacafe-redis
     profiles: ["linguacafe"]
     networks:
@@ -474,8 +468,6 @@ networks:
   asko_proxy:
     driver: bridge
   asko_backend:
-    driver: bridge
-  asko_agents:
     driver: bridge
   asko_automation:
     driver: bridge

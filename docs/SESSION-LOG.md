@@ -1,5 +1,7 @@
 # asko — Complete Session Log
 
+> **Note**: This is a historical record from the initial deployment. References to IronClaw are preserved for context — IronClaw has since been replaced by OpenClaw. See [ARCHITECTURE.md](../ARCHITECTURE.md) for the current stack.
+
 ## What We Built
 
 ### Repository: https://github.com/msiric/asko

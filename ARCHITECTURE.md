@@ -42,7 +42,7 @@ asko is a Docker Compose stack of 7 always-on services + 5 optional (profiled) s
 | **SearXNG** | `searxng/searxng:latest` | Private web search (JSON API for Open WebUI and n8n) | 8080 (internal) |
 | **Ollama** | `ollama/ollama:0.17.1` | Local LLM inference (CPU) | 11434 (127.0.0.1) |
 | **n8n** | `n8nio/n8n:1.76.1` | Workflow automation + WhatsApp bridge | 5678 |
-| **PostgreSQL** | `pgvector/pgvector:pg16` | Database with vector search (5 databases) | 5432 (127.0.0.1) |
+| **PostgreSQL** | `pgvector/pgvector:pg16` | Database with vector search (3 databases) | 5432 (127.0.0.1) |
 
 ### Optional (profiles)
 
@@ -54,27 +54,19 @@ asko is a Docker Compose stack of 7 always-on services + 5 optional (profiled) s
 | **LinguaCafe Redis** | `linguacafe` | `redis:7.2-alpine` | Cache for LinguaCafe |
 | **LinguaCafe NLP** | `linguacafe` | `ghcr.io/simjanos-dev/linguacafe-python-service:v0.14.1` | NLP tokenizer |
 
-### Optional (host-installed)
-
-| Component | Install | Purpose |
-|-----------|---------|---------|
-| **IronClaw** | `curl -fsSL https://ironclaw.sh \| sh` | WASM-sandboxed AI agent (Telegram, Signal) |
-
-IronClaw runs on the host, connects to PostgreSQL and Ollama/LiteLLM via localhost-bound ports. See [docs/SESSION-LOG.md](docs/SESSION-LOG.md) for configuration details.
-
 ## Network Isolation
 
-| Service | asko_proxy | asko_backend | asko_agents | asko_automation | asko_linguacafe |
-|---------|:---:|:---:|:---:|:---:|:---:|
-| Caddy | yes | - | - | - | - |
-| Open WebUI | yes | yes | - | - | - |
-| LiteLLM | yes | yes | yes | yes | - |
-| SearXNG | - | yes | - | - | - |
-| Ollama | - | yes | - | - | - |
-| PostgreSQL | - | yes | - | yes | - |
-| n8n | yes | - | - | yes | - |
-| WAHA | - | - | - | yes | - |
-| LinguaCafe * | - | - | - | - | yes |
+| Service | asko_proxy | asko_backend | asko_automation | asko_linguacafe |
+|---------|:---:|:---:|:---:|:---:|
+| Caddy | yes | - | - | - |
+| Open WebUI | yes | yes | - | - |
+| LiteLLM | yes | yes | yes | - |
+| SearXNG | - | yes | - | - |
+| Ollama | - | yes | - | - |
+| PostgreSQL | - | yes | yes | - |
+| n8n | yes | - | yes | - |
+| WAHA | - | - | yes | - |
+| LinguaCafe * | - | - | - | yes |
 
 \* All 4 LinguaCafe services are isolated on `asko_linguacafe` with no cross-talk to the main stack.
 
@@ -92,12 +84,6 @@ User browser → Caddy → Open WebUI → LiteLLM → Ollama (local)
 ```
 User toggles "Search the web" → Open WebUI → SearXNG → external search engines
                                            → LiteLLM → AI summarizes results
-```
-
-### Telegram (IronClaw — host-installed)
-
-```
-Telegram API → IronClaw (host, long polling) → Anthropic/LiteLLM → Cloud/Local
 ```
 
 ### WhatsApp (n8n + WAHA)

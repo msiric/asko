@@ -1,5 +1,7 @@
 # First Deployment Issues Log
 
+> **Note**: This is a historical record. References to IronClaw are preserved for context — IronClaw has since been replaced by OpenClaw.
+
 Issues encountered during the first real deployment on a Beelink SER5 MAX (Ryzen 7 6800U, 32GB, Ubuntu Server 24.04). Every item here is friction a user would hit when running `./setup.sh`.
 
 ## Critical (setup.sh fails or stack doesn't start)

@@ -31,6 +31,8 @@ load_env() {
         source "${ASKO_ROOT}/.env"
         set +a
     else
-        warn "No .env file found at ${ASKO_ROOT}/.env"
+        error "No .env file found at ${ASKO_ROOT}/.env"
+        echo "  Run ./setup.sh first to generate configuration."
+        exit 1
     fi
 }

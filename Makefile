@@ -1,6 +1,6 @@
 # asko — Security-first self-hosted AI assistant stack
 
-.PHONY: setup start stop restart test lint health backup update restore pull-models import-workflows logs clean
+.PHONY: setup start stop restart down test test-unit test-compose test-templates test-security lint lint-yaml lint-compose lint-all health backup update restore pull-models import-workflows logs logs-ollama logs-litellm logs-n8n status help
 
 # === Setup & Lifecycle ===
 

@@ -23,7 +23,7 @@ setup() {
 
 @test "postgres has all required databases" {
     cd "${ASKO_ROOT}"
-    for db in asko asko_ironclaw asko_n8n asko_openwebui asko_litellm; do
+    for db in asko asko_n8n asko_openwebui; do
         run docker compose exec -T postgres psql -U asko -lqt
         echo "$output" | grep -q "$db"
     done

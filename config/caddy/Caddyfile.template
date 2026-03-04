@@ -3,19 +3,32 @@
     admin off
 }
 
+(security_headers) {
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options SAMEORIGIN
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+}
+
 :80 {
+    import security_headers
     reverse_proxy open-webui:8080
 }
 
 http://chat.${DOMAIN_BASE} {
+    import security_headers
     reverse_proxy open-webui:8080
 }
 
 # Admin-only services — restrict via Tailscale ACLs
 http://n8n.${DOMAIN_BASE} {
+    import security_headers
     reverse_proxy n8n:5678
 }
 
 http://ai.${DOMAIN_BASE} {
+    import security_headers
     reverse_proxy litellm:4000
 }

@@ -17,7 +17,7 @@ cd "$ASKO_ROOT"
 
 # Dump each PostgreSQL database
 echo -e "${YELLOW}Dumping databases...${NC}"
-for db in asko asko_ironclaw asko_n8n asko_openwebui; do
+for db in asko asko_n8n asko_openwebui; do
     dump_file="${BACKUP_DIR}/${db}.sql.gz"
 
     # Use pipefail to catch pg_dump failures (exit code lost in pipe otherwise)
@@ -60,6 +60,6 @@ echo ""
 echo -e "${YELLOW}Cleaning older backups (retaining last 7)...${NC}"
 mapfile -t old_backups < <(ls -dt "${ASKO_ROOT}/backups"/*/ 2>/dev/null | tail -n +8)
 for dir in "${old_backups[@]}"; do
-    [[ -n "$dir" ]] && rm -rf "$dir"
+    [[ -n "$dir" ]] && [[ "$dir" == "${ASKO_ROOT}/backups/"* ]] && rm -rf "$dir"
 done
 echo "Done"

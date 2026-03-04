@@ -2,12 +2,11 @@
 
 load '../helpers/test-helpers'
 
-@test "only caddy and n8n expose public ports" {
+@test "only caddy exposes public ports" {
     cd "${ASKO_ROOT}"
 
     # Get all services that expose ports to all interfaces
-    # n8n is intentionally public (has its own basic auth, needed for LAN access)
-    # All other non-Caddy services must bind to 127.0.0.1
+    # Only Caddy should be public; all other services bind to 127.0.0.1
     services_with_public_ports=$(python3 -c "
 import yaml
 with open('${ASKO_ROOT}/docker-compose.yml') as f:
@@ -27,7 +26,7 @@ for name, svc in config.get('services', {}).items():
     echo "Services with public ports: $services_with_public_ports"
     while IFS= read -r svc; do
         [[ -z "$svc" ]] && continue
-        [[ "$svc" == "caddy" ]] || [[ "$svc" == "n8n" ]] || {
+        [[ "$svc" == "caddy" ]] || {
             echo "FAIL: $svc should not expose public ports"
             false
         }
@@ -64,11 +63,10 @@ for port in caddy.get('ports', []):
 @test "non-public services bind to localhost" {
     cd "${ASKO_ROOT}"
 
-    # Services with intentional public access: caddy (reverse proxy), n8n (has own basic auth)
-    # All other services must bind to 127.0.0.1
+    # Only Caddy should expose public ports; all other services must bind to 127.0.0.1
     non_localhost=$(python3 -c "
 import yaml
-allowed_public = {'caddy', 'n8n'}
+allowed_public = {'caddy'}
 with open('${ASKO_ROOT}/docker-compose.yml') as f:
     config = yaml.safe_load(f)
 for name, svc in config.get('services', {}).items():

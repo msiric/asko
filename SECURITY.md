@@ -17,7 +17,6 @@ See [docs/SECURITY.md](docs/SECURITY.md) for the full defense-in-depth security 
 - Host-level hardening (UFW, Tailscale-only access)
 - Docker container hardening (cap_drop ALL, no-new-privileges, resource limits)
 - 4 isolated Docker networks (least-privilege communication)
-- IronClaw WASM sandbox for AI agent tool execution
 - n8n hardening (community packages disabled, public API disabled)
 - Secret management (auto-generated, chmod 600, never committed)
 

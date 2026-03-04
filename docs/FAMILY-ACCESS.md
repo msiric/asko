@@ -7,7 +7,7 @@ This guide walks through onboarding family members to use asko.
 | Service | How They Access It | What They Can Do |
 |---------|-------------------|------------------|
 | **Open WebUI** | Browser (`chat.asko.local`) | Chat with AI models, upload documents |
-| **IronClaw** | Telegram bot | Send messages, get AI responses |
+| **Telegram Bot** | Telegram (via AI agent) | Send messages, get AI responses |
 | **WhatsApp Bot** | WhatsApp (via WAHA) | Send messages, get AI responses |
 
 Family members do **not** get access to n8n (workflow editor) or LiteLLM admin.
@@ -35,13 +35,9 @@ Each user gets:
 - Ability to upload documents for RAG
 - Personal settings and preferences
 
-## Step 3: Set Up Telegram Bot
+## Step 3: Set Up Telegram Bot (Optional)
 
-If you configured IronClaw with a Telegram bot:
-
-1. Share the bot link with family: `https://t.me/your_bot_name`
-2. They message the bot to start
-3. IronClaw creates a separate session per user (conversations are private)
+Telegram access is configured separately via your AI agent (e.g., OpenClaw). See your agent's documentation for setup instructions.
 
 ## Step 4: Set Up WhatsApp (via WAHA)
 
@@ -53,7 +49,7 @@ If you configured IronClaw with a Telegram bot:
 ## Privacy Between Users
 
 - **Open WebUI**: Each user's chat history is completely private. Other users (including admin) cannot see conversations through the UI.
-- **Telegram**: Each Telegram user gets an isolated session in IronClaw.
+- **Telegram**: Configured separately via your AI agent. Each user gets an isolated session.
 - **WhatsApp**: Messages are processed per-sender by n8n.
 
 The admin can see system logs and database contents, but normal usage is private per user.
@@ -74,8 +70,7 @@ For shared use cases (trip planning, family grocery list, etc.):
 - Check DNS is configured (see [TAILSCALE.md](TAILSCALE.md))
 
 **"Telegram bot not responding"**
-- Check IronClaw is running: `docker compose ps ironclaw`
-- Check logs: `docker compose logs ironclaw --tail 50`
+- Telegram is managed by your AI agent (outside this Docker stack). Check your agent's logs and status.
 
 **"AI responses are slow"**
 - Local models run on CPU — expect 5-15 seconds for responses

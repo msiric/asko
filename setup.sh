@@ -32,7 +32,11 @@ fatal() { echo -e "${RED}[FATAL]${NC} $*"; exit 1; }
 
 generate_secret() {
     local length="${1:-32}"
-    python3 -c "import secrets,string; print(''.join(secrets.choice(string.ascii_letters+string.digits) for _ in range($length)), end='')"
+    local secret
+    secret=$(python3 -c "import secrets,string; print(''.join(secrets.choice(string.ascii_letters+string.digits) for _ in range($length)), end='')") \
+        || fatal "Failed to generate secret (is python3 installed?)"
+    [[ ${#secret} -eq $length ]] || fatal "Secret generation produced unexpected output"
+    printf '%s' "$secret"
 }
 
 check_command() {
